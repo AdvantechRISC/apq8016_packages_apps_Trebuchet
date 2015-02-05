@@ -1357,6 +1357,7 @@ public class Launcher extends Activity
         }
         fragmentTransaction
                 .remove(mTransitionEffectsFragment).commit();
+        mTransitionEffectsFragment = null;
 
         mDarkPanel.setVisibility(View.VISIBLE);
         ObjectAnimator anim = ObjectAnimator.ofFloat(
