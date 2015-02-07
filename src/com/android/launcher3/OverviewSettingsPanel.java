@@ -62,7 +62,8 @@ public class OverviewSettingsPanel {
                 res.getString(R.string.drawer_type),
                 res.getString(R.string.scroll_effect_text),
                 res.getString(R.string.drawer_sorting_text),
-                res.getString(R.string.icon_labels)};
+                res.getString(R.string.icon_labels),
+                res.getString(R.string.blur_background)};
 
         String[] valuesApp = new String[] {
                 res.getString(R.string.larger_icons_text),
