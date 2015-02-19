@@ -125,4 +125,5 @@
     <bool name="config_launcher_show_backup_shortcut">false</bool>
     <bool name="config_mmx_enabled">false</bool>
     <bool name="config_srf_enabled">false</bool>
+    <bool name="config_launcher_stkAppRename">false</bool>
 </resources>
