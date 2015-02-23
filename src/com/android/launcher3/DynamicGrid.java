@@ -74,6 +74,9 @@ public class DynamicGrid {
             fourByFourDefaultLayout = R.xml.mmx_default_workspace;
         } else if (LauncherApplication.LAUNCHER_SFR_SHORTCUT_ENABLED) {
             fourByFourDefaultLayout = R.xml.srf_default_workspace;
+        } else if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_latamCommon)) {
+            fourByFourDefaultLayout = R.xml.latam_common_default_workspace;
         }
 
         boolean useSmallText = SettingsProvider.getBoolean(context,
