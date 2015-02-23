@@ -249,7 +249,9 @@ public class DeviceProfile {
         numHotseatIcons = closestProfile.numHotseatIcons;
         // Repositioning all apps launch button
         if (context.getResources().getBoolean(
-                R.bool.config_launcher_customWorkspace_latamCommon)) {
+                R.bool.config_launcher_customWorkspace_latamCommon) ||
+                context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_tlcl)) {
             hotseatAllAppsRank = res.getInteger(R.integer.hotseat_all_apps_index);
         } else {
             hotseatAllAppsRank = (int) (numHotseatIcons / 2);
