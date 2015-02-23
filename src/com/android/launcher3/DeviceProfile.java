@@ -247,7 +247,13 @@ public class DeviceProfile {
 
         // Snap to the closest hotseat size
         numHotseatIcons = closestProfile.numHotseatIcons;
-        hotseatAllAppsRank = (int) (numHotseatIcons / 2);
+        // Repositioning all apps launch button
+        if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_latamCommon)) {
+            hotseatAllAppsRank = res.getInteger(R.integer.hotseat_all_apps_index);
+        } else {
+            hotseatAllAppsRank = (int) (numHotseatIcons / 2);
+        }
 
         numRowsBase = (int) numRows;
         int gridResize = SettingsProvider.getIntCustomDefault(context,
