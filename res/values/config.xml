@@ -128,4 +128,5 @@
     <bool name="config_launcher_stkAppRename">false</bool>
     <bool name="config_launcher_customWorkspace_latamCommon">false</bool>
     <bool name="config_launcher_hideHomescrSearchBarOption">false</bool>
+    <bool name="config_launcher_customWorkspace_tlcl">false</bool>
 </resources>
