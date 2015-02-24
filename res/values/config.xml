@@ -130,4 +130,5 @@
     <bool name="config_launcher_hideHomescrSearchBarOption">false</bool>
     <bool name="config_launcher_customWorkspace_tlcl">false</bool>
     <bool name="config_launcher_customWorkspace_clr">false</bool>
+    <bool name="config_launcher_fixAllAppsScr1Scr2">false</bool>
 </resources>
