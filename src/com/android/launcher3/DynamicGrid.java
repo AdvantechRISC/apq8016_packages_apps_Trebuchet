@@ -78,6 +78,9 @@ public class DynamicGrid {
                 R.bool.config_launcher_customWorkspace_tlcl)) {
             fourByFourDefaultLayout = R.xml.tlcl_default_workspace;
         } else if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_clr)) {
+            fourByFourDefaultLayout = R.xml.clr_default_workspace;
+        } else if (context.getResources().getBoolean(
                 R.bool.config_launcher_customWorkspace_latamCommon)) {
             fourByFourDefaultLayout = R.xml.latam_common_default_workspace;
         }
