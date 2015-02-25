@@ -87,7 +87,6 @@ public class AppInfo extends ItemInfo {
 
         flags = initFlags(info);
         firstInstallTime = info.getFirstInstallTime();
-        iconCache.getTitleAndIcon(this, info, labelCache);
         intent = new Intent(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_LAUNCHER);
         intent.setComponent(info.getComponentName());
@@ -95,6 +94,9 @@ public class AppInfo extends ItemInfo {
         long serialNumber = UserManagerCompat.getInstance(context).getSerialNumberForUser(user);
         intent.putExtra(EXTRA_PROFILE, serialNumber);
         this.user = user;
+        // Moved down as we require intents setup for fetching launch stats.
+        iconCache.getTitleAndIcon(this, info, labelCache);
+
     }
 
     private static int initFlags(LauncherActivityInfoCompat info) {

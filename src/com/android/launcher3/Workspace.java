@@ -4999,7 +4999,7 @@ public class Workspace extends SmoothPagedView
                     ComponentName cn = shortcutInfo.getTargetComponent();
                     AppInfo appInfo = appsMap.get(cn);
                     if (user.equals(shortcutInfo.user) && cn != null
-                            && LauncherModel.isShortcutInfoUpdateable(info)
+                            && LauncherModel.isShortcutInfoUpdateable(getContext(), info)
                             && pkgNames.contains(cn.getPackageName())) {
                         boolean promiseStateChanged = false;
                         boolean infoUpdated = false;

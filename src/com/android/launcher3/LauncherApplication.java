@@ -25,6 +25,15 @@ public class LauncherApplication extends Application {
     public static boolean LAUNCHER_BACKUP_SHORTCUT_ENABLED;
     public static boolean LAUNCHER_MMX_SHORTCUT_ENABLED;
     public static boolean LAUNCHER_SFR_SHORTCUT_ENABLED;
+    public static boolean sConfigLauncherFixAllAppsScr1Scr2;
+    public static boolean sConfigLauncherAllAppsBgTransparency;
+    public static boolean sConfigLauncherNewAppsBadge;
+    public static boolean sConfigLauncherSortLaunchCountDwnldApps;
+
+    private String mStkAppName = new String();
+    private final String STK_PACKAGE_INTENT_ACTION_NAME =
+            "org.codeaurora.carrier.ACTION_TELEPHONY_SEND_STK_TITLE";
+    private final String STK_APP_NAME = "StkTitle";
 
     @Override
     public void onCreate() {
@@ -40,6 +49,15 @@ public class LauncherApplication extends Application {
                 getResources().getBoolean(R.bool.config_mmx_enabled);
         LAUNCHER_SFR_SHORTCUT_ENABLED =
                 getResources().getBoolean(R.bool.config_srf_enabled);
+        sConfigLauncherFixAllAppsScr1Scr2 =
+                getResources().getBoolean(R.bool.config_launcher_fixAllAppsScr1Scr2);
+        sConfigLauncherAllAppsBgTransparency = getResources().getBoolean(
+                R.bool.config_launcher_AllAppsBgTransparency);
+        sConfigLauncherNewAppsBadge =
+                getResources().getBoolean(R.bool.config_launcher_newAppsBadge);
+        sConfigLauncherSortLaunchCountDwnldApps =
+                getResources().getBoolean(R.bool.config_launcher_sortLaunchCountDwnldApps);
+
         LauncherAppState.setApplicationContext(this);
         LauncherAppState.getInstance();
     }

@@ -244,9 +244,16 @@ public class IconCache {
     public void getTitleAndIcon(AppInfo application, LauncherActivityInfoCompat info,
             HashMap<Object, CharSequence> labelCache) {
         synchronized (mCache) {
-            CacheEntry entry = cacheLocked(application.componentName, info, labelCache,
-                    info.getUser(), false, application.unreadNum);
-
+            CacheEntry entry = null;
+            if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+                entry = cacheLocked(application.componentName, info, labelCache,
+                        info.getUser(), false, application.unreadNum,
+                        LauncherModel.isAppNewDownloaded(application, Launcher.getStats())
+                        );
+            } else {
+                entry = cacheLocked(application.componentName, info, labelCache,
+                        info.getUser(), false, application.unreadNum);
+            }
             application.title = entry.title;
             application.iconBitmap = entry.icon;
             application.contentDescription = entry.contentDescription;
@@ -263,7 +270,7 @@ public class IconCache {
             // null info means not installed, but if we have a component from the intent then
             // we should still look in the cache for restored app icons.
             if (component == null) {
-                return getDefaultIcon(user);
+                return getDefaultIcon(user, mContext, intent);
             }
 
             LauncherActivityInfoCompat launcherActInfo = mLauncherApps.resolveActivity(intent, user);
@@ -286,7 +293,7 @@ public class IconCache {
             // null info means not installed, but if we have a component from the intent then
             // we should still look in the cache for restored app icons.
             if (component == null) {
-                shortcutInfo.setIcon(getDefaultIcon(user));
+                shortcutInfo.setIcon(getDefaultIcon(user, mContext, intent));
                 shortcutInfo.title = "";
                 shortcutInfo.usingFallbackIcon = true;
             } else {
@@ -302,22 +309,49 @@ public class IconCache {
         }
     }
 
+    public Bitmap getDefaultIcon(UserHandleCompat user,
+            Context context,
+            Intent intent) {
+          boolean setDownloadBadge = LauncherApplication.sConfigLauncherNewAppsBadge
+                && LauncherModel.getDownloadedAppLaunchType(context,
+                        intent) == LauncherModel.LAUNCHED_NEVER;
+          return getDefaultIcon(user, context, setDownloadBadge);
+    }
 
-    public Bitmap getDefaultIcon(UserHandleCompat user) {
+    public Bitmap getDefaultIcon(UserHandleCompat user,
+            Context context,
+            boolean setDownloadBadge) {
         if (!mDefaultIcons.containsKey(user)) {
             mDefaultIcons.put(user, makeDefaultIcon(user));
         }
-        return mDefaultIcons.get(user);
+
+        if (setDownloadBadge) {
+            Bitmap b = mDefaultIcons.get(user);
+            if (b != null) {
+                return Utilities.createIconBitmap(new BitmapDrawable(
+                        context.getResources(), b),
+                        context, -1, true);
+            }
+            return null;
+        } else {
+            return mDefaultIcons.get(user);
+        }
     }
 
     public Bitmap getIcon(ComponentName component, LauncherActivityInfoCompat info,
             HashMap<Object, CharSequence> labelCache) {
+        return getIcon(component, info, labelCache, false);
+    }
+
+    public Bitmap getIcon(ComponentName component, LauncherActivityInfoCompat info,
+            HashMap<Object, CharSequence> labelCache, boolean newDownload) {
         synchronized (mCache) {
             if (info == null || component == null) {
                 return null;
             }
 
-            CacheEntry entry = cacheLocked(component, info, labelCache, info.getUser(), false, -1);
+            CacheEntry entry = cacheLocked(component, info, labelCache, info.getUser(), false, -1,
+                    newDownload);
             return entry.icon;
         }
     }
@@ -329,6 +363,13 @@ public class IconCache {
     private CacheEntry cacheLocked(ComponentName componentName, LauncherActivityInfoCompat info,
             HashMap<Object, CharSequence> labelCache, UserHandleCompat user,
             boolean usePackageIcon, int unreadNum) {
+        return cacheLocked(componentName, info, labelCache, user, usePackageIcon, unreadNum, false);
+
+    }
+
+    private CacheEntry cacheLocked(ComponentName componentName, LauncherActivityInfoCompat info,
+            HashMap<Object, CharSequence> labelCache, UserHandleCompat user,
+            boolean usePackageIcon, int unreadNum, boolean newDownload) {
         CacheKey cacheKey = new CacheKey(componentName, user);
         CacheEntry entry = mCache.get(cacheKey);
         if (entry == null || unreadNum >= 0) {
@@ -349,7 +390,7 @@ public class IconCache {
 
                 entry.contentDescription = mUserManager.getBadgedLabelForUser(entry.title, user);
                 entry.icon = Utilities.createIconBitmap(
-                        info.getBadgedIcon(mIconDpi), mContext, unreadNum);
+                        info.getBadgedIcon(mIconDpi), mContext, unreadNum, newDownload);
             } else {
                 entry.title = "";
                 Bitmap preloaded = getPreloadedIcon(componentName, user);
@@ -371,7 +412,7 @@ public class IconCache {
                     if (entry.icon == null) {
                         if (DEBUG) Log.d(TAG, "using default icon for " +
                                 componentName.toShortString());
-                        entry.icon = getDefaultIcon(user);
+                        entry.icon = getDefaultIcon(user, mContext, newDownload);
                     }
                 }
             }
