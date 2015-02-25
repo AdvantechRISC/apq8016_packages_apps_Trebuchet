@@ -955,7 +955,15 @@ public class DeviceProfile {
                 padding.bottom = Math.max(0, pageIndicatorHeight - paddingTB);
 
                 pagedView.setWidgetsPageIndicatorPadding(pageIndicatorHeight);
-                fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                    // set background similar to wallpaper dim background to have
+                    // have smoother AllApps transition.
+                    // Alpha for background color is proportional to dim amount
+                    fakePage.setBackgroundColor(res
+                            .getColor(R.color.all_apps_background_dim_color));
+                } else {
+                    fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                }
 
                 // Horizontal padding for the whole paged view
                 int pagedFixedViewPadding =

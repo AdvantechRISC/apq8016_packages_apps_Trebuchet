@@ -1081,10 +1081,12 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         int heightSpec = MeasureSpec.makeMeasureSpec(mContentHeight, MeasureSpec.AT_MOST);
         layout.measure(widthSpec, heightSpec);
 
-        Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
-        if (bg != null) {
-            bg.setAlpha(mPageBackgroundsVisible ? 255: 0);
-            layout.setBackground(bg);
+        if (!LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+            Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
+            if (bg != null) {
+                bg.setAlpha(mPageBackgroundsVisible ? 255: 0);
+                layout.setBackground(bg);
+            }
         }
 
         setVisibilityOnChildren(layout, View.VISIBLE);
@@ -1135,8 +1137,15 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                     ? ((page == 0) ? ctFirstPageApps.get(i) : ctApps.get(i))
                     : mFilteredApps.get(i);
 
-            BubbleTextView icon = (BubbleTextView) mLayoutInflater.inflate(
-                    R.layout.apps_customize_application, layout, false);
+            BubbleTextView icon = null;
+            if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                icon = (BubbleTextView) mLayoutInflater.inflate(
+                        R.layout.apps_customize_application_transparent_bg, layout, false);
+            } else {
+                icon = (BubbleTextView) mLayoutInflater.inflate(
+                        R.layout.apps_customize_application, layout, false);
+            }
+
             icon.applyFromApplicationInfo(info);
             icon.setTextVisibility(!hideIconLabels);
             icon.setOnClickListener(mLauncher);
