@@ -126,4 +126,6 @@
     <bool name="config_mmx_enabled">false</bool>
     <bool name="config_srf_enabled">false</bool>
     <bool name="config_launcher_stkAppRename">false</bool>
+    <bool name="config_launcher_customWorkspace_latamCommon">false</bool>
+    <bool name="config_launcher_hideHomescrSearchBarOption">false</bool>
 </resources>

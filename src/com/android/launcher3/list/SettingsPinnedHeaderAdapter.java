@@ -92,7 +92,11 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
 
         boolean current = false;
         String state = "";
-
+        // Hiding home screen search bar on/off option
+        if (res.getBoolean(R.bool.config_launcher_hideHomescrSearchBarOption)
+                && partition == OverviewSettingsPanel.HOME_SETTINGS_POSITION) {
+            position++;
+        }
         switch (partition) {
             case OverviewSettingsPanel.HOME_SETTINGS_POSITION:
                 switch (position) {
@@ -261,7 +265,11 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
 
             int partition = ((SettingsPosition) v.getTag()).partition;
             int position = ((SettingsPosition) v.getTag()).position;
-
+            // Hiding home screen search bar on/off option
+            if (res.getBoolean(R.bool.config_launcher_hideHomescrSearchBarOption)
+                    && partition == OverviewSettingsPanel.HOME_SETTINGS_POSITION) {
+                position++;
+            }
             switch (partition) {
                 case OverviewSettingsPanel.HOME_SETTINGS_POSITION:
                     switch (position) {
