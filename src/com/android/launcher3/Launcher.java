@@ -3494,6 +3494,17 @@ public class Launcher extends Activity
         setWorkspaceBackground(visible);
     }
 
+    void setBehindWindowDim(boolean setdim) {
+        if (setdim) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            getWindow().setDimAmount(
+                    getResources().getInteger(R.integer.wallpaper_dim_amount_percentage) / 100f);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            getWindow().setDimAmount(0f);
+        }
+    }
+
     private void dispatchOnLauncherTransitionPrepare(View v, boolean animated, boolean toWorkspace) {
         if (v instanceof LauncherTransitionable) {
             ((LauncherTransitionable) v).onLauncherTransitionPrepare(this, animated, toWorkspace);
@@ -3625,7 +3636,9 @@ public class Launcher extends Activity
             if (isWidgetTray) {
                 revealView.setBackground(res.getDrawable(R.drawable.quantum_panel_dark));
             } else {
-                revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                if (!LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                    revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                }
             }
 
             // Hide the real page background, and swap in the fake one
@@ -3879,7 +3892,9 @@ public class Launcher extends Activity
                 if (isWidgetTray) {
                     revealView.setBackground(res.getDrawable(R.drawable.quantum_panel_dark));
                 } else {
-                    revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    if (!LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                        revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    }
                 }
 
                 int width = revealView.getMeasuredWidth();
@@ -4087,6 +4102,9 @@ public class Launcher extends Activity
     void showWorkspace(boolean animated, Runnable onCompleteRunnable) {
         if (mState != State.WORKSPACE || mWorkspace.getState() != Workspace.State.NORMAL) {
             boolean wasInSpringLoadedMode = (mState != State.WORKSPACE);
+            if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                setBehindWindowDim(false);
+            }
             mWorkspace.setVisibility(View.VISIBLE);
             hideAppsCustomizeHelper(Workspace.State.NORMAL, animated, false, onCompleteRunnable);
 
@@ -4130,6 +4148,9 @@ public class Launcher extends Activity
     void showAllApps(boolean animated, AppsCustomizePagedView.ContentType contentType,
                      boolean resetPageToZero) {
         if (mState != State.WORKSPACE) return;
+        if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+            setBehindWindowDim(true);
+        }
 
         if (resetPageToZero) {
             mAppsCustomizeTabHost.reset();
