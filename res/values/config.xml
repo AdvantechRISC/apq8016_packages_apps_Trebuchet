@@ -125,13 +125,4 @@
     <bool name="config_launcher_show_backup_shortcut">false</bool>
     <bool name="config_mmx_enabled">false</bool>
     <bool name="config_srf_enabled">false</bool>
-    <bool name="config_launcher_stkAppRename">false</bool>
-    <bool name="config_launcher_customWorkspace_latamCommon">false</bool>
-    <bool name="config_launcher_hideHomescrSearchBarOption">false</bool>
-    <bool name="config_launcher_customWorkspace_tlcl">false</bool>
-    <bool name="config_launcher_customWorkspace_clr">false</bool>
-    <bool name="config_launcher_fixAllAppsScr1Scr2">false</bool>
-    <bool name="config_launcher_AllAppsBgTransparency">false</bool>
-    <!-- must be between 0 and 100 -->
-    <integer name="wallpaper_dim_amount_percentage">0</integer>
 </resources>
