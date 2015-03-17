@@ -136,4 +136,5 @@
     <integer name="wallpaper_dim_amount_percentage">0</integer>
     <bool name="config_launcher_newAppsBadge">false</bool>
     <bool name="config_launcher_sortLaunchCountDwnldApps">false</bool>
+    <bool name="config_launcher_sortDwnldAppsAtEnd">false</bool>
 </resources>
