@@ -40,14 +40,24 @@ public class OverviewSettingsPanel {
                 res.getString(R.string.home_screen_settings),
                 res.getString(R.string.drawer_settings),
                 res.getString(R.string.app_settings)};
-
-        String[] values = new String[]{
-                res.getString(R.string.home_screen_search_text),
-                res.getString(R.string.scroll_effect_text),
-                res.getString(R.string.icon_labels),
-                res.getString(R.string.scrolling_wallpaper),
-                res.getString(R.string.grid_size_text)};
-
+        String[] values;
+        // Hiding home screen search bar on/off option
+        if (res.getBoolean(R.bool.config_launcher_hideHomescrSearchBarOption)) {
+            values = new String[] {
+                    res.getString(R.string.scroll_effect_text),
+                    res.getString(R.string.icon_labels),
+                    res.getString(R.string.scrolling_wallpaper),
+                    res.getString(R.string.grid_size_text)
+            };
+        } else {
+            values = new String[] {
+                    res.getString(R.string.home_screen_search_text),
+                    res.getString(R.string.scroll_effect_text),
+                    res.getString(R.string.icon_labels),
+                    res.getString(R.string.scrolling_wallpaper),
+                    res.getString(R.string.grid_size_text)
+            };
+        }
         String[] valuesDrawer = new String[] {
                 res.getString(R.string.scroll_effect_text),
                 res.getString(R.string.drawer_sorting_text),
