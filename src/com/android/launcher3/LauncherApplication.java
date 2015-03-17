@@ -31,6 +31,8 @@ public class LauncherApplication extends Application {
     public static boolean LAUNCHER_SFR_SHORTCUT_ENABLED;
     public static boolean sConfigLauncherFixAllAppsScr1Scr2;
     public static boolean sConfigLauncherAllAppsBgTransparency;
+    public static boolean sConfigLauncherNewAppsBadge;
+    public static boolean sConfigLauncherSortLaunchCountDwnldApps;
 
     private String mStkAppName = new String();
     private final String STK_PACKAGE_INTENT_ACTION_NAME =
@@ -55,6 +57,10 @@ public class LauncherApplication extends Application {
                 getResources().getBoolean(R.bool.config_launcher_fixAllAppsScr1Scr2);
         sConfigLauncherAllAppsBgTransparency = getResources().getBoolean(
                 R.bool.config_launcher_AllAppsBgTransparency);
+        sConfigLauncherNewAppsBadge =
+                getResources().getBoolean(R.bool.config_launcher_newAppsBadge);
+        sConfigLauncherSortLaunchCountDwnldApps =
+                getResources().getBoolean(R.bool.config_launcher_sortLaunchCountDwnldApps);
 
         LauncherAppState.setApplicationContext(this);
         LauncherAppState.getInstance();

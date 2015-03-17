@@ -77,4 +77,5 @@
 
     <!-- Dialog -->
     <string name="dialog_confirm">Confirm</string>
+    <string name="download_badge_text">New</string>
 </resources>

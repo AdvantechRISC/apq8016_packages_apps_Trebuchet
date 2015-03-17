@@ -38,6 +38,7 @@ import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
@@ -100,6 +101,11 @@ public class LauncherModel extends BroadcastReceiver
     public static final int LOADER_FLAG_NONE = 0;
     public static final int LOADER_FLAG_CLEAR_WORKSPACE = 1 << 0;
     public static final int LOADER_FLAG_MIGRATE_SHORTCUTS = 1 << 1;
+
+    public static final int LAUNCHED_UNKNOWN = -1;
+    public static final int LAUNCHED_NEVER = 0;
+    public static final int LAUNCHED_ONCE = 1;
+    public static final int LAUNCHED_MANY = 2;
 
     private static final int ITEMS_CHUNK = 6; // batch size for the workspace icons
     private static final long INVALID_SCREEN_ID = -1L;
@@ -267,7 +273,63 @@ public class LauncherModel extends BroadcastReceiver
         }
     }
 
+    private ArrayList<ComponentName>  mNewDownloadAppsLaunched =
+            new ArrayList<ComponentName>();
+
+
+    private class DownloadAppChangeTask implements Runnable {
+        public void run() {
+            ArrayList<ComponentName> downloadAppInfos = new ArrayList<ComponentName>();
+            synchronized (mNewDownloadAppsLaunched) {
+                downloadAppInfos.addAll(mNewDownloadAppsLaunched);
+                mNewDownloadAppsLaunched.clear();
+            }
+
+            Context context = mApp.getContext();
+            final Callbacks callbacks = mCallbacks != null ? mCallbacks.get() : null;
+            if (callbacks == null) {
+                Log.w(TAG, "Cannot update.  Launcher is probably loading.");
+                return;
+            }
+
+            final ArrayList<AppInfo> appLaunchedFinal = new ArrayList<AppInfo>();
+            for (ComponentName uInfo : downloadAppInfos) {
+                AppInfo info = mBgAllAppsList.changeDownloadedAppIcon(context,
+                        uInfo);
+                if (info != null) {
+                    appLaunchedFinal.add(info);
+                }
+            }
+
+            if (appLaunchedFinal.isEmpty()) {
+                return;
+            }
+
+            mHandler.post(new Runnable() {
+                public void run() {
+                    Callbacks cb = mCallbacks != null ? mCallbacks.get() : null;
+                    if (callbacks == cb && cb != null) {
+                        callbacks.bindAppsUpdated(appLaunchedFinal);
+                    }
+                }
+            });
+        }
+    }
+
+    public void updateDownloadedAppIcon(ComponentName componentName) {
+        if (componentName == null) {
+            return;
+        }
+        synchronized (mNewDownloadAppsLaunched) {
+            mNewDownloadAppsLaunched.add(componentName);
+        }
+        sWorker.removeCallbacks(mDownloadedAppUpdateTask);
+        sWorker.post(mDownloadedAppUpdateTask);
+    }
+
     private UnreadNumberChangeTask mUnreadUpdateTask = new UnreadNumberChangeTask();
+
+    private DownloadAppChangeTask  mDownloadedAppUpdateTask = new DownloadAppChangeTask();
 
     public interface ItemInfoFilter {
         public boolean filterItem(ItemInfo parent, ItemInfo info, ComponentName cn);
@@ -2177,9 +2239,18 @@ public class LauncherModel extends BroadcastReceiver
                                     info = getShortcutInfo(manager, intent, user, context, c,
                                             iconIndex, titleIndex, mLabelCache, allowMissingTarget);
                                 } else {
-                                    info = getShortcutInfo(c, context, iconTypeIndex,
-                                            iconPackageIndex, iconResourceIndex, iconIndex,
-                                            titleIndex);
+
+                                    if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+                                        info = getShortcutInfo(c, context, iconTypeIndex,
+                                                iconPackageIndex, iconResourceIndex, iconIndex,
+                                                titleIndex, intent);
+
+                                    } else {
+                                        info = getShortcutInfo(c, context, iconTypeIndex,
+                                                iconPackageIndex, iconResourceIndex, iconIndex,
+                                                titleIndex);
+
+                                    }
 
                                     // App shortcuts that used to be automatically added to Launcher
                                     // didn't always have the correct intent flags set, so do that
@@ -3285,7 +3356,7 @@ public class LauncherModel extends BroadcastReceiver
                     ArrayList<ItemInfo> infos =
                             getItemInfoForComponentName(a.componentName, mUser);
                     for (ItemInfo i : infos) {
-                        if (isShortcutInfoUpdateable(i)) {
+                        if (isShortcutInfoUpdateable(context, i)) {
                             ShortcutInfo info = (ShortcutInfo) i;
                             info.title = a.title.toString();
                             info.contentDescription = a.contentDescription;
@@ -3495,22 +3566,24 @@ public class LauncherModel extends BroadcastReceiver
         }
 
         final ShortcutInfo info = new ShortcutInfo();
+        boolean setDownloadBadge = LauncherApplication.sConfigLauncherNewAppsBadge
+                && getDownloadedAppLaunchType(context, intent) == LAUNCHED_NEVER;
 
         // the resource -- This may implicitly give us back the fallback icon,
         // but don't worry about that.  All we're doing with usingFallbackIcon is
         // to avoid saving lots of copies of that in the database, and most apps
         // have icons anyway.
-        Bitmap icon = mIconCache.getIcon(componentName, lai, labelCache);
+        Bitmap icon = mIconCache.getIcon(componentName, lai, labelCache, setDownloadBadge);
 
         // the db
         if (icon == null) {
             if (c != null) {
-                icon = getIconFromCursor(c, iconIndex, context);
+                icon = getIconFromCursor(c, iconIndex, context, setDownloadBadge);
             }
         }
         // the fallback icon
         if (icon == null) {
-            icon = mIconCache.getDefaultIcon(user);
+            icon = mIconCache.getDefaultIcon(user, context, setDownloadBadge);
             info.usingFallbackIcon = true;
         }
         info.setIcon(icon);
@@ -3588,7 +3661,7 @@ public class LauncherModel extends BroadcastReceiver
         return filterItemInfos(sBgItemsIdMap.values(), filter);
     }
 
-    public static boolean isShortcutInfoUpdateable(ItemInfo i) {
+    public static boolean isShortcutInfoUpdateable(Context context, ItemInfo i) {
         if (i instanceof ShortcutInfo) {
             ShortcutInfo info = (ShortcutInfo) i;
             // We need to check for ACTION_MAIN otherwise getComponent() might
@@ -3600,6 +3673,16 @@ public class LauncherModel extends BroadcastReceiver
                     Intent.ACTION_MAIN.equals(intent.getAction()) && name != null) {
                 return true;
             }
+            if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+                if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_SHORTCUT &&
+                        Intent.ACTION_MAIN.equals(intent.getAction()) && name != null) {
+                    if (getDownloadedAppLaunchType(context, intent) == LAUNCHED_ONCE) {
+                        return true;
+                    }
+
+                }
+            }
+
             // placeholder shortcuts get special treatment, let them through too.
             if (info.isPromise()) {
                 return true;
@@ -3614,6 +3697,17 @@ public class LauncherModel extends BroadcastReceiver
     private ShortcutInfo getShortcutInfo(Cursor c, Context context,
             int iconTypeIndex, int iconPackageIndex, int iconResourceIndex, int iconIndex,
             int titleIndex) {
+        return getShortcutInfo(c, context,
+                iconTypeIndex, iconPackageIndex, iconResourceIndex, iconIndex,
+                titleIndex, null);
+    }
+
+    /**
+     * Make an ShortcutInfo object for a shortcut that isn't an application.
+     */
+    private ShortcutInfo getShortcutInfo(Cursor c, Context context,
+            int iconTypeIndex, int iconPackageIndex, int iconResourceIndex, int iconIndex,
+            int titleIndex, Intent intent) {
 
         Bitmap icon = null;
         final ShortcutInfo info = new ShortcutInfo();
@@ -3626,6 +3720,8 @@ public class LauncherModel extends BroadcastReceiver
         info.title = c.getString(titleIndex);
 
         int iconType = c.getInt(iconTypeIndex);
+        boolean setDownloadBadge = LauncherApplication.sConfigLauncherNewAppsBadge
+                && getDownloadedAppLaunchType(context, intent) == LAUNCHED_NEVER;
         switch (iconType) {
         case LauncherSettings.Favorites.ICON_TYPE_RESOURCE:
             String packageName = c.getString(iconPackageIndex);
@@ -3638,25 +3734,31 @@ public class LauncherModel extends BroadcastReceiver
                 if (resources != null) {
                     final int id = resources.getIdentifier(resourceName, null, null);
                     icon = Utilities.createIconBitmap(
-                            mIconCache.getFullResIcon(resources, id), context);
+                            mIconCache.getFullResIcon(resources,
+                                    id), context, -1,
+                                    setDownloadBadge);
                 }
             } catch (Exception e) {
-                // drop this.  we have other places to look for icons
+                // drop this. we have other places to look for icons
             }
             // the db
             if (icon == null) {
-                icon = getIconFromCursor(c, iconIndex, context);
+                icon = getIconFromCursor(c, iconIndex, context,
+                        setDownloadBadge);
             }
             // the fallback icon
             if (icon == null) {
-                icon = mIconCache.getDefaultIcon(info.user);
+                icon = mIconCache.getDefaultIcon(info.user,
+                        context, setDownloadBadge);
                 info.usingFallbackIcon = true;
             }
             break;
         case LauncherSettings.Favorites.ICON_TYPE_BITMAP:
-            icon = getIconFromCursor(c, iconIndex, context);
+            icon = getIconFromCursor(c, iconIndex, context,
+                    setDownloadBadge);
             if (icon == null) {
-                icon = mIconCache.getDefaultIcon(info.user);
+                icon = mIconCache.getDefaultIcon(info.user,
+                        context, setDownloadBadge);
                 info.customIcon = false;
                 info.usingFallbackIcon = true;
             } else {
@@ -3664,7 +3766,8 @@ public class LauncherModel extends BroadcastReceiver
             }
             break;
         default:
-            icon = mIconCache.getDefaultIcon(info.user);
+            icon = mIconCache.getDefaultIcon(info.user, context,
+                    setDownloadBadge);
             info.usingFallbackIcon = true;
             info.customIcon = false;
             break;
@@ -3673,7 +3776,8 @@ public class LauncherModel extends BroadcastReceiver
         return info;
     }
 
-    Bitmap getIconFromCursor(Cursor c, int iconIndex, Context context) {
+    Bitmap getIconFromCursor(Cursor c, int iconIndex,
+            Context context, boolean setDownloadedBadge) {
         @SuppressWarnings("all") // suppress dead code warning
         final boolean debug = false;
         if (debug) {
@@ -3682,8 +3786,16 @@ public class LauncherModel extends BroadcastReceiver
         }
         byte[] data = c.getBlob(iconIndex);
         try {
-            return Utilities.createIconBitmap(
-                    BitmapFactory.decodeByteArray(data, 0, data.length), context);
+            if (setDownloadedBadge) {
+                Bitmap b = Utilities.createIconBitmap(
+                        BitmapFactory.decodeByteArray(data, 0, data.length), context);
+                return Utilities.createIconBitmap(new BitmapDrawable(
+                              context.getResources(), b),
+                              context, -1, true);
+            } else {
+                return Utilities.createIconBitmap(
+                        BitmapFactory.decodeByteArray(data, 0, data.length), context);
+            }
         } catch (Exception e) {
             return null;
         }
@@ -3729,9 +3841,13 @@ public class LauncherModel extends BroadcastReceiver
         Bitmap icon = null;
         boolean customIcon = false;
         ShortcutIconResource iconResource = null;
+        boolean setDownloadBadge = LauncherApplication.sConfigLauncherNewAppsBadge
+                && getDownloadedAppLaunchType(context, intent) == LAUNCHED_NEVER;
 
         if (bitmap != null && bitmap instanceof Bitmap) {
-            icon = Utilities.createIconBitmap(new FastBitmapDrawable((Bitmap)bitmap), context);
+
+            icon = Utilities.createIconBitmap(new FastBitmapDrawable((Bitmap) bitmap), context,
+                    -1, setDownloadBadge);
             customIcon = true;
         } else {
             Parcelable extra = data.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE);
@@ -3742,9 +3858,11 @@ public class LauncherModel extends BroadcastReceiver
                     Resources resources = packageManager.getResourcesForApplication(
                             iconResource.packageName);
                     final int id = resources.getIdentifier(iconResource.resourceName, null, null);
+
                     icon = Utilities.createIconBitmap(
                             mIconCache.getFullResIcon(resources, id),
-                            context);
+                            context, -1, setDownloadBadge);
+
                 } catch (Exception e) {
                     Log.w(TAG, "Could not load shortcut icon: " + extra);
                 }
@@ -3760,7 +3878,8 @@ public class LauncherModel extends BroadcastReceiver
             if (fallbackIcon != null) {
                 icon = fallbackIcon;
             } else {
-                icon = mIconCache.getDefaultIcon(info.user);
+                icon = mIconCache.getDefaultIcon(info.user, context,
+                        intent);
                 info.usingFallbackIcon = true;
             }
         }
@@ -3849,6 +3968,30 @@ public class LauncherModel extends BroadcastReceiver
             }
         };
     }
+
+    public static final Comparator<AppInfo> getNewDownloadedAppNameComparator(final Stats stats) {
+        final Collator collator = Collator.getInstance();
+        return new Comparator<AppInfo>() {
+            public final int compare(AppInfo a, AppInfo b) {
+                if (a.user.equals(b.user)) {
+                    int result = compareNewDownloads(a, b, stats);
+                    if (result == 0) {
+                        result = collator.compare(a.title.toString().trim(),
+                                b.title.toString().trim());
+                        if (result == 0) {
+                            result = a.componentName.compareTo(b.componentName);
+                        }
+                    }
+                    return result;
+                } else {
+                    // TODO Need to figure out rules for sorting
+                    // profiles, this puts work second.
+                    return a.user.toString().compareTo(b.user.toString());
+                }
+            }
+        };
+    }
+
     public static final Comparator<AppInfo> getAppLaunchCountComparator(final Stats stats) {
         final Collator collator = Collator.getInstance();
         return new Comparator<AppInfo>() {
@@ -3865,6 +4008,28 @@ public class LauncherModel extends BroadcastReceiver
             }
         };
     }
+
+    public static final Comparator<AppInfo> getNewDownloadedAppLaunchCountComparator(
+            final Stats stats) {
+        final Collator collator = Collator.getInstance();
+        return new Comparator<AppInfo>() {
+            public final int compare(AppInfo a, AppInfo b) {
+                int result = compareNewDownloads(a, b, stats);
+                if (result == 0) {
+                    result = stats.launchCount(b.intent) - stats.launchCount(a.intent);
+                    if (result == 0) {
+                        result = collator.compare(a.title.toString().trim(),
+                                b.title.toString().trim());
+                        if (result == 0) {
+                            result = a.componentName.compareTo(b.componentName);
+                        }
+                    }
+                }
+                return result;
+            }
+        };
+    }
+
     public static final Comparator<AppInfo> APP_INSTALL_TIME_COMPARATOR
             = new Comparator<AppInfo>() {
         public final int compare(AppInfo a, AppInfo b) {
@@ -3873,6 +4038,86 @@ public class LauncherModel extends BroadcastReceiver
             return 0;
         }
     };
+
+    public static final Comparator<AppInfo> getNewDownloadedAppInstallTimeComparator(
+            final Stats stats) {
+        return new Comparator<AppInfo>() {
+            public final int compare(AppInfo a, AppInfo b) {
+                int result = compareNewDownloads(a, b, stats);
+                if (result == 0) {
+                    if (a.firstInstallTime < b.firstInstallTime)
+                        return 1;
+                    if (a.firstInstallTime > b.firstInstallTime)
+                        return -1;
+                    return 0;
+                }
+                return result;
+            }
+        };
+    }
+
+    /**
+     * Check if app is downloaded and not yet launched
+     *
+     * @param appInfo
+     * @param stats
+     * @return True if app is downloaded and not yet launched
+     */
+    public static boolean isAppNewDownloaded(AppInfo appInfo, Stats stats) {
+        return ((appInfo.flags & AppInfo.DOWNLOADED_FLAG) != 0)
+                && (stats.launchCount(appInfo.intent) == 0);
+    }
+
+    /**
+     * Return launch count type based on app launches.
+     *
+     * @param context
+     * @param intent
+     * @return launch type
+     */
+    public static int getDownloadedAppLaunchType(Context context, Intent intent) {
+        if (intent.getComponent() != null && !Utilities.isSystemApp(context, intent)) {
+            int launchCount = Launcher.getStats().launchCount(intent);
+
+            switch (launchCount) {
+                case 0:
+
+                    return LAUNCHED_NEVER;
+                case 1:
+
+                    return LAUNCHED_ONCE;
+
+                default:
+                    return LAUNCHED_MANY;
+            }
+        }
+        return LAUNCHED_UNKNOWN;
+
+    }
+
+    /**
+     * Compare apps and place system app at beginning and downloaded apps at end.
+     * If both are downloded apps allow normal sort.
+     *
+     * @param a
+     * @param b
+     * @param stats
+     * @return 1 if App-a is downloaded and App-b is system app, -1 if App-b is
+     *         downloaded and App-a is system app, 0 if both are downloded apps.
+     */
+    private static int compareNewDownloads(AppInfo a, AppInfo b, Stats stats) {
+        boolean isNewDownloadedAppA = isAppNewDownloaded(a, stats);
+        boolean isNewDownloadedAppB = isAppNewDownloaded(b, stats);
+
+        if (isNewDownloadedAppA && !isNewDownloadedAppB) {
+            return 1;
+        } else if (!isNewDownloadedAppA && isNewDownloadedAppB) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
     static ComponentName getComponentNameFromResolveInfo(ResolveInfo info) {
         if (info.activityInfo != null) {
             return new ComponentName(info.activityInfo.packageName, info.activityInfo.name);

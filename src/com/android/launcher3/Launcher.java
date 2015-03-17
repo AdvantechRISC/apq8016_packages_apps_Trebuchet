@@ -412,7 +412,7 @@ public class Launcher extends Activity
         int appWidgetId;
     }
 
-    private Stats mStats;
+    private static Stats sStats;
 
     FocusIndicatorView mFocusHandler;
 
@@ -483,7 +483,7 @@ public class Launcher extends Activity
         mDragController = new DragController(this);
         mInflater = getLayoutInflater();
 
-        mStats = new Stats(this);
+        sStats = new Stats(this);
 
         mAppWidgetManager = AppWidgetManagerCompat.getInstance(this);
 
@@ -740,8 +740,8 @@ public class Launcher extends Activity
         }
     }
 
-    public Stats getStats() {
-        return mStats;
+    public static Stats getStats() {
+        return sStats;
     }
 
     public LayoutInflater getInflater() {
@@ -2998,7 +2998,22 @@ public class Launcher extends Activity
         }
 
         boolean success = startActivitySafely(v, intent, tag);
-        mStats.recordLaunch(intent, shortcut);
+        if (success) {
+            if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+                // if we downloaded app for first time remove download badge
+                // and update sort order.
+                if (mModel.getDownloadedAppLaunchType(getApplicationContext(), intent)
+                         == LauncherModel.LAUNCHED_NEVER) {
+                    // update after checking original launch count
+                    sStats.recordLaunch(intent, shortcut);
+                    mModel.updateDownloadedAppIcon(intent.getComponent());
+                } else {
+                    sStats.recordLaunch(intent, shortcut);
+                }
+            } else {
+                sStats.recordLaunch(intent, shortcut);
+            }
+        }
 
         if (success && v instanceof BubbleTextView) {
             mWaitingForResume = (BubbleTextView) v;
@@ -5189,6 +5204,15 @@ public class Launcher extends Activity
         if (!LauncherAppState.isDisableAllApps() &&
                 mAppsCustomizeContent != null) {
             mAppsCustomizeContent.removeApps(appInfos);
+        }
+
+        // reset launch counts
+        if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+            for (AppInfo info : appInfos) {
+                if (!Utilities.isSystemApp(getApplicationContext(), info.intent)) {
+                    sStats.recordLaunch(info.intent, null, true);
+                }
+            }
         }
     }
 
