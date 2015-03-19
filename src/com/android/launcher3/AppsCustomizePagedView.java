@@ -290,7 +290,6 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
     private static final int CT_CUSTOMIZED_PAGE_COUNT = 2;
 
     private boolean mPreInstallConfig = false;
-    private int mFixedPages = 0;
     private ArrayList<String> mPreClassArray = new ArrayList<String> ();
     private ArrayList<String> mCTClassArray = new ArrayList<String> ();
     private ArrayList<String> mCTFirstPageArray = new ArrayList<String> ();
@@ -365,8 +364,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
 
         configClassArray(context, mPreClassArray, PRE_CLASS_IDENTIFIER, true);
 
-        if (LauncherApplication.SHOW_CTAPP_FEATURE
-                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
+        if (LauncherApplication.SHOW_CTAPP_FEATURE) {
             configClassArray(context, mCTClassArray, CT_CLASS_IDENTIFIER, false);
             configClassArray(context, mCTFirstPageArray, CT_FIRSTPAGE_IDENTIFIER, false);
         }
@@ -470,18 +468,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 (float) (mWidgetCountX * mWidgetCountY));
         mNumAppsPages = (int) Math.ceil((float) mFilteredApps.size() / (mCellCountX * mCellCountY));
         if(LauncherApplication.SHOW_CTAPP_FEATURE){
-            mNumAppsPages = mNumAppsPages + CT_CUSTOMIZED_PAGE_COUNT; //for ct
-            mFixedPages = CT_CUSTOMIZED_PAGE_COUNT;
-        } else if (LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
-            // if second page array is 0 consider only first page as fixed
-            if (ctApps.size() <= 0) {
-                mNumAppsPages = mNumAppsPages + 1;
-                mFixedPages = 1;
-            } else {
-                mNumAppsPages = mNumAppsPages + 2;
-                mFixedPages = 2;
-            }
-
+            mNumAppsPages = mNumAppsPages + 2; //for ct
         }
     }
 
@@ -1081,12 +1068,10 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         int heightSpec = MeasureSpec.makeMeasureSpec(mContentHeight, MeasureSpec.AT_MOST);
         layout.measure(widthSpec, heightSpec);
 
-        if (!LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
-            Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
-            if (bg != null) {
-                bg.setAlpha(mPageBackgroundsVisible ? 255: 0);
-                layout.setBackground(bg);
-            }
+        Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
+        if (bg != null) {
+            bg.setAlpha(mPageBackgroundsVisible ? 255: 0);
+            layout.setBackground(bg);
         }
 
         setVisibilityOnChildren(layout, View.VISIBLE);
@@ -1110,15 +1095,12 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         AppsCustomizeCellLayout layout = (AppsCustomizeCellLayout) getPageAt(page);
 
         //set page 1 & 2 to CT's app
-        boolean isCTFlag = (LauncherApplication.SHOW_CTAPP_FEATURE
-                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2)
-                && (page < mFixedPages);
+        boolean isCTFlag = LauncherApplication.SHOW_CTAPP_FEATURE
+                && (page < CT_CUSTOMIZED_PAGE_COUNT);
 
-        int startIndex = isCTFlag ? 0
-                : (((LauncherApplication.SHOW_CTAPP_FEATURE
-                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2)
-                && page >= mFixedPages) ? (page - mFixedPages) * numCells
-                        : page * numCells);
+        int startIndex = isCTFlag ? 0 : ((LauncherApplication.SHOW_CTAPP_FEATURE
+                && page >= CT_CUSTOMIZED_PAGE_COUNT) ? (page - CT_CUSTOMIZED_PAGE_COUNT) * numCells
+                : page * numCells);
 
         int ctEndIndex = (page == 0) ? Math.min(startIndex + numCells, ctFirstPageApps.size())
                 : Math.min(startIndex + numCells, ctApps.size());
@@ -1137,15 +1119,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                     ? ((page == 0) ? ctFirstPageApps.get(i) : ctApps.get(i))
                     : mFilteredApps.get(i);
 
-            BubbleTextView icon = null;
-            if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
-                icon = (BubbleTextView) mLayoutInflater.inflate(
-                        R.layout.apps_customize_application_transparent_bg, layout, false);
-            } else {
-                icon = (BubbleTextView) mLayoutInflater.inflate(
-                        R.layout.apps_customize_application, layout, false);
-            }
-
+            BubbleTextView icon = (BubbleTextView) mLayoutInflater.inflate(
+                    R.layout.apps_customize_application, layout, false);
             icon.applyFromApplicationInfo(info);
             icon.setTextVisibility(!hideIconLabels);
             icon.setOnClickListener(mLauncher);
@@ -1715,17 +1690,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 addPreInstallApps();
             }
 
-            if (LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
-                // common bug . Duplicate apps shown in 3rd screen which includes 1st
-                // page and 2nd page apps. Happens as filterAppsWithoutInvalidate() is called
-                // before sortByCustomization().
-                sortByCustomization();
-                filterAppsWithoutInvalidate();
-            } else {
-                filterAppsWithoutInvalidate();
-                sortByCustomization();
-            }
-
+            filterAppsWithoutInvalidate();
+            sortByCustomization();
             updatePageCountsAndInvalidateData();
         }
     }
@@ -1876,31 +1842,6 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             }
         }
         Collections.sort(mFilteredApps, getComparatorForSortMode());
-
-        if (LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
-            // common bug. Protected apps not filtered from ctApps and
-            // ctFirstPageApps
-            filterProtectedApps(ctFirstPageApps);
-            filterProtectedApps(ctApps);
-        }
-    }
-
-    public void filterProtectedApps(ArrayList<AppInfo> apps) {
-        if (apps.size() > 0) {
-            Iterator<AppInfo> iterator = apps.iterator();
-            while (iterator.hasNext()) {
-                AppInfo appInfo = iterator.next();
-                boolean isSystemApp = (appInfo.flags & AppInfo.DOWNLOADED_FLAG) == 0;
-                if (mProtectedApps
-                        .contains(appInfo.componentName)
-                        ||
-                        (isSystemApp && !getShowSystemApps())
-                        ||
-                        (!isSystemApp && !getShowDownloadedApps())) {
-                    iterator.remove();
-                }
-            }
-        }
     }
 
     public void filterApps() {
@@ -2130,8 +2071,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
     }
 
     private void sortByCustomization() {
-        if (LauncherApplication.SHOW_CTAPP_FEATURE
-                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
+        if(LauncherApplication.SHOW_CTAPP_FEATURE){
             ctApps.clear();
             ctFirstPageApps.clear();
 

@@ -247,17 +247,7 @@ public class DeviceProfile {
 
         // Snap to the closest hotseat size
         numHotseatIcons = closestProfile.numHotseatIcons;
-        // Repositioning all apps launch button
-        if (context.getResources().getBoolean(
-                R.bool.config_launcher_customWorkspace_latamCommon) ||
-                context.getResources().getBoolean(
-                R.bool.config_launcher_customWorkspace_tlcl) ||
-                context.getResources().getBoolean(
-                R.bool.config_launcher_customWorkspace_clr)) {
-            hotseatAllAppsRank = res.getInteger(R.integer.hotseat_all_apps_index);
-        } else {
-            hotseatAllAppsRank = (int) (numHotseatIcons / 2);
-        }
+        hotseatAllAppsRank = (int) (numHotseatIcons / 2);
 
         numRowsBase = (int) numRows;
         int gridResize = SettingsProvider.getIntCustomDefault(context,
@@ -955,15 +945,7 @@ public class DeviceProfile {
                 padding.bottom = Math.max(0, pageIndicatorHeight - paddingTB);
 
                 pagedView.setWidgetsPageIndicatorPadding(pageIndicatorHeight);
-                if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
-                    // set background similar to wallpaper dim background to have
-                    // have smoother AllApps transition.
-                    // Alpha for background color is proportional to dim amount
-                    fakePage.setBackgroundColor(res
-                            .getColor(R.color.all_apps_background_dim_color));
-                } else {
-                    fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
-                }
+                fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
 
                 // Horizontal padding for the whole paged view
                 int pagedFixedViewPadding =
