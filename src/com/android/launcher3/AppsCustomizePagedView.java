@@ -1599,6 +1599,11 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
     }
 
     public Comparator<AppInfo> getComparatorForSortMode() {
+
+        if (LauncherApplication.sConfigLauncherSortLaunchCountDwnldApps) {
+            return getNewDownloadedComparatorForSortMode();
+        }
+
         switch (mSortMode) {
             case Title:
                 return LauncherModel.getAppNameComparator();
@@ -1608,6 +1613,26 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 return LauncherModel.APP_INSTALL_TIME_COMPARATOR;
         }
         return LauncherModel.getAppNameComparator();
+    }
+
+    public Comparator<AppInfo> getNewDownloadedComparatorForSortMode() {
+        switch (mSortMode) {
+            case Title:
+                return LauncherModel
+                        .getNewDownloadedAppNameComparator(mLauncher
+                                .getStats());
+            case LaunchCount:
+                return LauncherModel
+                        .getNewDownloadedAppLaunchCountComparator(mLauncher
+                                .getStats());
+            case InstallTime:
+                return LauncherModel
+                        .getNewDownloadedAppInstallTimeComparator(mLauncher
+                                .getStats());
+        }
+        return LauncherModel
+                .getNewDownloadedAppNameComparator(mLauncher
+                        .getStats());
     }
 
     public void setSortMode(SortMode sortMode) {

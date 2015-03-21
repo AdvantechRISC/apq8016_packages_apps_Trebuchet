@@ -103,15 +103,36 @@ public class Stats {
         }
     }
 
+    public void resetLaunch(String intentStr) {
+        int pos = mIntents.indexOf(intentStr);
+        if (pos < 0) {
+            return;
+        } else {
+            mHistogram.set(pos, 0);
+        }
+    }
+
     public int launchCount(Intent intent) {
+
         intent = new Intent(intent);
         intent.setSourceBounds(null);
 
-        final String flat = intent.toUri(0);
+        final String flat;
+        if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+            // Common bug. Save component instead of full intents to
+            // have common launch counts for Apps and App Shortcuts.
+            if (intent.getComponent() == null) {
+                return -1;
+            }
+            flat = intent.getComponent().flattenToString();
+        } else {
+            flat = intent.toUri(0);
+        }
 
         int pos = mIntents.indexOf(flat);
         if (pos < 0) {
             return 0;
+
         } else {
             return mHistogram.get(pos);
         }
@@ -122,10 +143,24 @@ public class Stats {
     }
 
     public void recordLaunch(Intent intent, ShortcutInfo shortcut) {
+        recordLaunch(intent, null, false);
+    }
+
+    public void recordLaunch(Intent intent, ShortcutInfo shortcut, boolean reset) {
         intent = new Intent(intent);
         intent.setSourceBounds(null);
 
-        final String flat = intent.toUri(0);
+        final String flat;
+        if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+            // Common bug. Save component instead of full intents to
+            // have common launch counts for Apps and App Shortcuts.
+            if (intent.getComponent() == null) {
+                return;
+            }
+            flat = intent.getComponent().flattenToString();
+        } else {
+            flat = intent.toUri(0);
+        }
 
         Intent broadcastIntent = new Intent(ACTION_LAUNCH).putExtra(EXTRA_INTENT, flat);
         if (shortcut != null) {
@@ -136,7 +171,11 @@ public class Stats {
         }
         mLauncher.sendBroadcast(broadcastIntent, PERM_LAUNCH);
 
-        incrementLaunch(flat);
+        if (reset) {
+            resetLaunch(flat);
+        } else {
+            incrementLaunch(flat);
+        }
 
         if (FLUSH_IMMEDIATELY) {
             saveStats();
