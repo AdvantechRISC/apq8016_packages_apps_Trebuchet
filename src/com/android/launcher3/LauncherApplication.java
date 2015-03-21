@@ -29,6 +29,7 @@ public class LauncherApplication extends Application {
     public static boolean sConfigLauncherAllAppsBgTransparency;
     public static boolean sConfigLauncherNewAppsBadge;
     public static boolean sConfigLauncherSortLaunchCountDwnldApps;
+    public static boolean sConfigLauncherSortDwnldAppsAtEnd;
 
     private String mStkAppName = new String();
     private final String STK_PACKAGE_INTENT_ACTION_NAME =
@@ -57,6 +58,8 @@ public class LauncherApplication extends Application {
                 getResources().getBoolean(R.bool.config_launcher_newAppsBadge);
         sConfigLauncherSortLaunchCountDwnldApps =
                 getResources().getBoolean(R.bool.config_launcher_sortLaunchCountDwnldApps);
+        sConfigLauncherSortDwnldAppsAtEnd = getResources().getBoolean(
+                R.bool.config_launcher_sortDwnldAppsAtEnd);
 
         LauncherAppState.setApplicationContext(this);
         LauncherAppState.getInstance();

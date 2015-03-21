@@ -3992,6 +3992,29 @@ public class LauncherModel extends BroadcastReceiver
         };
     }
 
+    public static final Comparator<AppInfo> getDownloadedAppNameComparator() {
+        final Collator collator = Collator.getInstance();
+        return new Comparator<AppInfo>() {
+            public final int compare(AppInfo a, AppInfo b) {
+                if (a.user.equals(b.user)) {
+                    int result = compareDownloads(a, b);
+                    if (result == 0) {
+                        result = collator.compare(a.title.toString().trim(),
+                                b.title.toString().trim());
+                        if (result == 0) {
+                            result = a.componentName.compareTo(b.componentName);
+                        }
+                    }
+                    return result;
+                } else {
+                    // TODO Need to figure out rules for sorting
+                    // profiles, this puts work second.
+                    return a.user.toString().compareTo(b.user.toString());
+                }
+            }
+        };
+    }
+
     public static final Comparator<AppInfo> getAppLaunchCountComparator(final Stats stats) {
         final Collator collator = Collator.getInstance();
         return new Comparator<AppInfo>() {
@@ -4030,6 +4053,27 @@ public class LauncherModel extends BroadcastReceiver
         };
     }
 
+    public static final Comparator<AppInfo> getDownloadedAppLaunchCountComparator(
+            final Stats stats) {
+        final Collator collator = Collator.getInstance();
+        return new Comparator<AppInfo>() {
+            public final int compare(AppInfo a, AppInfo b) {
+                int result = compareDownloads(a, b);
+                if (result == 0) {
+                    result = stats.launchCount(b.intent) - stats.launchCount(a.intent);
+                    if (result == 0) {
+                        result = collator.compare(a.title.toString().trim(),
+                                b.title.toString().trim());
+                        if (result == 0) {
+                            result = a.componentName.compareTo(b.componentName);
+                        }
+                    }
+                }
+                return result;
+            }
+        };
+    }
+
     public static final Comparator<AppInfo> APP_INSTALL_TIME_COMPARATOR
             = new Comparator<AppInfo>() {
         public final int compare(AppInfo a, AppInfo b) {
@@ -4044,6 +4088,22 @@ public class LauncherModel extends BroadcastReceiver
         return new Comparator<AppInfo>() {
             public final int compare(AppInfo a, AppInfo b) {
                 int result = compareNewDownloads(a, b, stats);
+                if (result == 0) {
+                    if (a.firstInstallTime < b.firstInstallTime)
+                        return 1;
+                    if (a.firstInstallTime > b.firstInstallTime)
+                        return -1;
+                    return 0;
+                }
+                return result;
+            }
+        };
+    }
+
+    public static final Comparator<AppInfo> getDownloadedAppInstallTimeComparator() {
+        return new Comparator<AppInfo>() {
+            public final int compare(AppInfo a, AppInfo b) {
+                int result = compareDownloads(a, b);
                 if (result == 0) {
                     if (a.firstInstallTime < b.firstInstallTime)
                         return 1;
@@ -4112,6 +4172,38 @@ public class LauncherModel extends BroadcastReceiver
         if (isNewDownloadedAppA && !isNewDownloadedAppB) {
             return 1;
         } else if (!isNewDownloadedAppA && isNewDownloadedAppB) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Check if app is downloaded
+     *
+     * @param appInfo
+     * @return True if app is downloaded
+     */
+    public static boolean isAppDownloaded(AppInfo appInfo) {
+        return ((appInfo.flags & AppInfo.DOWNLOADED_FLAG) != 0);
+    }
+
+    /**
+     * Compare apps and place system app at beginning and downloaded apps at end.
+     * If both are downloded apps allow normal sort.
+     *
+     * @param a
+     * @param b
+     * @return 1 if App-a is downloaded and App-b is system app, -1 if App-b is
+     *         downloaded and App-a is system app, 0 if both are downloded apps.
+     */
+    private static int compareDownloads(AppInfo a, AppInfo b) {
+        boolean isDownloadedAppA = isAppDownloaded(a);
+        boolean isDownloadedAppB = isAppDownloaded(b);
+
+        if (isDownloadedAppA && !isDownloadedAppB) {
+            return 1;
+        } else if (!isDownloadedAppA && isDownloadedAppB) {
             return -1;
         } else {
             return 0;
