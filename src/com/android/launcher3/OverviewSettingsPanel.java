@@ -59,6 +59,7 @@ public class OverviewSettingsPanel {
             };
         }
         String[] valuesDrawer = new String[] {
+                res.getString(R.string.drawer_type),
                 res.getString(R.string.scroll_effect_text),
                 res.getString(R.string.drawer_sorting_text),
                 res.getString(R.string.icon_labels)};

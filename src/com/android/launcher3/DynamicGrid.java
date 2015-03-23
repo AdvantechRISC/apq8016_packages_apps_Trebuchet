@@ -34,7 +34,7 @@ public class DynamicGrid {
     private float mMinHeight;
 
     // This is a static that we use for the default icon size on a 4/5-inch phone
-    static float DEFAULT_ICON_SIZE_DP = 60;
+    static float DEFAULT_ICON_SIZE_DP = 66;
     static float DEFAULT_ICON_SIZE_PX = 0;
     static float DEFAULT_TEXT_SIZE_SMALL = 10;
     static float DEFAULT_TEXT_SIZE_NORMAL = 13;
@@ -63,8 +63,22 @@ public class DynamicGrid {
         boolean useLargeIcons = SettingsProvider.getBoolean(context,
                 SettingsProvider.SETTINGS_UI_GENERAL_ICONS_LARGE,
                 R.bool.preferences_interface_general_icons_large_default);
+        int fourByFourDefaultLayout = R.xml.default_workspace_4x4;
+        if (LauncherApplication.LAUNCHER_SHORTCUT_ENABLED) {
+            fourByFourDefaultLayout = R.xml.ct_default_workspace_4x4;
+        } else if (LauncherApplication.LAUNCHER_BACKUP_SHORTCUT_ENABLED) {
+            fourByFourDefaultLayout = R.xml.cm_with_backup_default_workspace;
+        } else if (LauncherApplication.LAUNCHER_MMX_SHORTCUT_ENABLED) {
+            fourByFourDefaultLayout = R.xml.mmx_default_workspace;
+        } else if (LauncherApplication.LAUNCHER_SFR_SHORTCUT_ENABLED) {
+            fourByFourDefaultLayout = R.xml.srf_default_workspace;
+        }
+
+        boolean useSmallText = SettingsProvider.getBoolean(context,
+                SettingsProvider.SETTINGS_UI_GENERAL_TEXT_SMALL,
+                R.bool.preferences_interface_general_text_small_default);
         boolean launcherShortcutEnabled = LauncherApplication.LAUNCHER_SHORTCUT_ENABLED;
-        int fourByFourDefaultLayout = launcherShortcutEnabled ? R.xml.ct_default_workspace_4x4
+        fourByFourDefaultLayout = launcherShortcutEnabled ? R.xml.ct_default_workspace_4x4
                                 : R.xml.default_workspace_4x4;
         if (LauncherApplication.LAUNCHER_SHORTCUT_ENABLED) {
             fourByFourDefaultLayout = R.xml.ct_default_workspace_4x4;
@@ -85,9 +99,6 @@ public class DynamicGrid {
             fourByFourDefaultLayout = R.xml.latam_common_default_workspace;
         }
 
-        boolean useSmallText = SettingsProvider.getBoolean(context,
-                SettingsProvider.SETTINGS_UI_GENERAL_TEXT_SMALL,
-                R.bool.preferences_interface_general_text_small_default);
         DEFAULT_ICON_SIZE_PX = pxFromDp(DEFAULT_ICON_SIZE_DP, dm);
         // Our phone profiles include the bar sizes in each orientation
         deviceProfiles.add(new DeviceProfile("Super Short Stubby",
