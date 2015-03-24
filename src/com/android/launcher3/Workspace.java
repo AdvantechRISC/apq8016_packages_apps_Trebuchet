@@ -133,7 +133,6 @@ public class Workspace extends SmoothPagedView
     private final WallpaperManager mWallpaperManager;
     private IBinder mWindowToken;
 
-    private int mOriginalDefaultPage;
     private int mDefaultPage;
     private long mDefaultScreenId;
 
@@ -365,9 +364,9 @@ public class Workspace extends SmoothPagedView
             res.getInteger(R.integer.config_workspaceSpringLoadShrinkPercentage) / 100.0f;
         mOverviewModeShrinkFactor = grid.getOverviewModeScale();
         mCameraDistance = res.getInteger(R.integer.config_cameraDistance);
-        mOriginalDefaultPage = mDefaultPage = a.getInt(R.styleable.Workspace_defaultScreen, 1);
+        mDefaultPage = a.getInt(R.styleable.Workspace_defaultScreen, 1);
         mDefaultScreenId = SettingsProvider.getLongCustomDefault(context,
-            SettingsProvider.SETTINGS_UI_HOMESCREEN_DEFAULT_SCREEN_ID, -1);
+            SettingsProvider.SETTINGS_UI_HOMESCREEN_DEFAULT_SCREEN_ID, mDefaultPage);
         a.recycle();
 
         setOnHierarchyChangeListener(this);
