@@ -163,6 +163,14 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
                                 : res.getString(R.string.icon_labels_show);
                         ((TextView) v.findViewById(R.id.item_state)).setText(state);
                         break;
+                    case 4:
+                        current = SettingsProvider.getBoolean(mContext,
+                                SettingsProvider.SETTINGS_UI_DRAWER_BLUR_BACKGROUND,
+                                R.bool.preferences_interface_drawer_blur_background_default);
+                        state = current ? res.getString(R.string.setting_state_on)
+                                : res.getString(R.string.setting_state_off);
+                        ((TextView) v.findViewById(R.id.item_state)).setText(state);
+                        break;
                     default:
                         ((TextView) v.findViewById(R.id.item_state)).setText("");
                 }
@@ -345,6 +353,12 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
                                     SettingsProvider.SETTINGS_UI_DRAWER_HIDE_ICON_LABELS,
                                     R.bool.preferences_interface_drawer_hide_icon_labels_default);
                             mLauncher.setUpdateDynamicGrid();
+                            break;
+                        case 4:
+                            onSettingsBooleanChanged(v,
+                                    SettingsProvider.SETTINGS_UI_DRAWER_BLUR_BACKGROUND,
+                                    R.bool.preferences_interface_drawer_blur_background_default);
+                            mLauncher.setUpBlurAppPage();
                             break;
                     }
                     break;

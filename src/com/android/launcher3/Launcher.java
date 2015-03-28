@@ -149,6 +149,8 @@ public class Launcher extends Activity
     static final String TAG = "Launcher";
     static final boolean LOGD = false;
 
+    private boolean ALLAPPS_BLUR_ENABLED = false;
+
     DeviceProfile mGrid;
 
     static final boolean PROFILE_STARTUP = false;
@@ -481,6 +483,7 @@ public class Launcher extends Activity
         super.onCreate(savedInstanceState);
 
         initializeDynamicGrid();
+        setUpBlurAppPage();
         mHideIconLabels = SettingsProvider.getBoolean(this,
                 SettingsProvider.SETTINGS_UI_HOMESCREEN_HIDE_ICON_LABELS,
                 R.bool.preferences_interface_homescreen_hide_icon_labels_default);
@@ -1663,6 +1666,9 @@ public class Launcher extends Activity
         mLauncherView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         mWorkspaceBackgroundDrawable = getResources().getDrawable(R.drawable.workspace_bg);
+        if (ALLAPPS_BLUR_ENABLED) {
+            mWorkspaceBackgroundDrawable.setAlpha((int) (0.6 * 255));
+        }
 
         // Setup the drag layer
         mDragLayer.setup(this, dragController);
@@ -3727,6 +3733,13 @@ public class Launcher extends Activity
                     revealView.setBackgroundColor(res.getColor(R.color.app_drawer_background));
                 } else {
                     revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    if (ALLAPPS_BLUR_ENABLED) {
+                        Drawable d = res.getDrawable(R.drawable.quantum_panel);
+                        d.setAlpha(AppsCustomizePagedView.ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA);
+                        revealView.setBackground(d);
+                    } else {
+                        revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    }
                 }
             }
 
@@ -3936,6 +3949,9 @@ public class Launcher extends Activity
             dispatchOnLauncherTransitionStart(toView, animated, false);
             dispatchOnLauncherTransitionEnd(toView, animated, false);
         }
+        if (ALLAPPS_BLUR_ENABLED) {
+            setupAllappsBlur(true);
+        }
     }
 
     /**
@@ -4027,7 +4043,13 @@ public class Launcher extends Activity
                         revealView.setBackgroundColor(res.getColor(
                                 R.color.app_drawer_background));
                     } else {
-                        revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                        if (ALLAPPS_BLUR_ENABLED) {
+                            Drawable d = res.getDrawable(R.drawable.quantum_panel);
+                            d.setAlpha(AppsCustomizePagedView.ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA);
+                            revealView.setBackground(d);
+                        } else {
+                            revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                        }
                     }
                 }
 
@@ -4236,6 +4258,9 @@ public class Launcher extends Activity
             dispatchOnLauncherTransitionPrepare(toView, animated, true);
             dispatchOnLauncherTransitionStart(toView, animated, true);
             dispatchOnLauncherTransitionEnd(toView, animated, true);
+        }
+        if (ALLAPPS_BLUR_ENABLED) {
+            setupAllappsBlur(false);
         }
     }
 
@@ -5684,6 +5709,17 @@ public class Launcher extends Activity
     public void onPageSwitch(View newPage, int newPageIndex) {
     }
 
+    private void setupAllappsBlur(boolean showBlur) {
+        if (!ALLAPPS_BLUR_ENABLED) return;
+
+        if (showBlur) {
+            getWindow().setBlurMaskAlphaThreshold(0.2f); // draw blurred color only where our alpha > threshold
+            getWindow().addPrivateFlags(WindowManager.LayoutParams.PRIVATE_FLAG_BLUR_WITH_MASKING_SCALED);
+        } else {
+            getWindow().clearPrivateFlags(WindowManager.LayoutParams.PRIVATE_FLAG_BLUR_WITH_MASKING_SCALED);
+        }
+    }
+
     /**
      * Prints out out state for debugging.
      */
@@ -5841,6 +5877,18 @@ public class Launcher extends Activity
 
     public void setUpdateDynamicGrid() {
         mDynamicGridUpdateRequired = true;
+    }
+
+    public void setUpBlurAppPage() {
+       boolean current = SettingsProvider.getBoolean(
+                this, SettingsProvider.SETTINGS_UI_DRAWER_BLUR_BACKGROUND,
+                R.bool.preferences_interface_drawer_blur_background_default);
+
+        ALLAPPS_BLUR_ENABLED = current;
+    }
+
+    public boolean getBlurAppPage() {
+        return ALLAPPS_BLUR_ENABLED;
     }
 
     public boolean updateGridIfNeeded() {
