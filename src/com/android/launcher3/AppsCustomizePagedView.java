@@ -1778,8 +1778,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 sortByCustomization();
                 filterAppsWithoutInvalidate();
             } else {
-                filterAppsWithoutInvalidate();
                 sortByCustomization();
+                filterAppsWithoutInvalidate();
             }
 
             updatePageCountsAndInvalidateData();
