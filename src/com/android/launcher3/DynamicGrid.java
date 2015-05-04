@@ -121,21 +121,42 @@ public class DynamicGrid {
                 DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
                 (useLargeIcons ? 58 : 46), fourByFourDefaultLayout,
                 R.xml.default_workspace_4x4_no_all_apps));
-        deviceProfiles.add(new DeviceProfile("Nexus S",
-                296, 491.33f,  4, 4,  (useLargeIcons ? 58 : 46), (useSmallText ?
-                DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
-                (useLargeIcons ? 58 : 46), fourByFourDefaultLayout,
-                R.xml.default_workspace_4x4_no_all_apps));
-        deviceProfiles.add(new DeviceProfile("Nexus 4",
-                335, 567,  4, 4,  (useLargeIcons ? DEFAULT_ICON_SIZE_DP : 56), (useSmallText ?
-                DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
-                (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
-                R.xml.default_workspace_4x4_no_all_apps));
-        deviceProfiles.add(new DeviceProfile("Nexus 5",
-                359, 567,  4, 4,  (useLargeIcons ? DEFAULT_ICON_SIZE_DP : 56), (useSmallText ?
-                DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
-                (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
-                R.xml.default_workspace_4x4_no_all_apps));
+        if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_tlcl)
+                || context.getResources().getBoolean(
+                        R.bool.config_launcher_customWorkspace_latamCommon)) {
+            deviceProfiles.add(new DeviceProfile("Nexus S",
+                    296, 491.33f,  5, 4,  (useLargeIcons ? 58 : 46), (useSmallText ?
+                    DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
+                    (useLargeIcons ? 58 : 46), fourByFourDefaultLayout,
+                    R.xml.default_workspace_4x4_no_all_apps));
+            deviceProfiles.add(new DeviceProfile("Nexus 4",
+                    335, 567,  5, 4,  (useLargeIcons ? DEFAULT_ICON_SIZE_DP : 56), (useSmallText ?
+                    DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
+                    (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
+                    R.xml.default_workspace_4x4_no_all_apps));
+            deviceProfiles.add(new DeviceProfile("Nexus 5",
+                    359, 567,  5, 4,  (useLargeIcons ? DEFAULT_ICON_SIZE_DP : 56), (useSmallText ?
+                    DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
+                    (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
+                    R.xml.default_workspace_4x4_no_all_apps));
+        } else {
+            deviceProfiles.add(new DeviceProfile("Nexus S",
+                    296, 491.33f,  4, 4,  (useLargeIcons ? 58 : 46), (useSmallText ?
+                    DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
+                    (useLargeIcons ? 58 : 46), fourByFourDefaultLayout,
+                    R.xml.default_workspace_4x4_no_all_apps));
+            deviceProfiles.add(new DeviceProfile("Nexus 4",
+                    335, 567,  4, 4,  (useLargeIcons ? DEFAULT_ICON_SIZE_DP : 56), (useSmallText ?
+                    DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
+                    (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
+                    R.xml.default_workspace_4x4_no_all_apps));
+            deviceProfiles.add(new DeviceProfile("Nexus 5",
+                    359, 567,  4, 4,  (useLargeIcons ? DEFAULT_ICON_SIZE_DP : 56), (useSmallText ?
+                    DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
+                    (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
+                    R.xml.default_workspace_4x4_no_all_apps));
+        }
         deviceProfiles.add(new DeviceProfile("Large Phone",
                 406, 694,  5, 5,  (useLargeIcons ? 68 : 56), (useSmallText ? 11.4f : 14.4f),  5,
                 (useLargeIcons ? 60 : 48), R.xml.default_workspace_5x5,
