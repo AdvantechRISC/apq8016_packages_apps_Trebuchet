@@ -137,4 +137,5 @@
     <bool name="config_launcher_newAppsBadge">false</bool>
     <bool name="config_launcher_sortLaunchCountDwnldApps">false</bool>
     <bool name="config_launcher_sortDwnldAppsAtEnd">false</bool>
+    <bool name="config_launcher_customWorkspace_tlcl_lnx">false</bool>
 </resources>

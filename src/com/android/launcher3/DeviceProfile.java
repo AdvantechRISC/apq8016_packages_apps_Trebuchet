@@ -253,7 +253,9 @@ public class DeviceProfile {
                 context.getResources().getBoolean(
                 R.bool.config_launcher_customWorkspace_tlcl) ||
                 context.getResources().getBoolean(
-                R.bool.config_launcher_customWorkspace_clr)) {
+                R.bool.config_launcher_customWorkspace_clr) ||
+                context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_tlcl_lnx)) {
             hotseatAllAppsRank = res.getInteger(R.integer.hotseat_all_apps_index);
         } else {
             hotseatAllAppsRank = (int) (numHotseatIcons / 2);
