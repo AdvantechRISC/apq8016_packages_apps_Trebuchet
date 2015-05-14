@@ -17,33 +17,51 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
+<favorites xmlns:launcher="http://schemas.android.com/apk/res-auto/com.android.launcher3" >
 
-<favorites xmlns:launcher="http://schemas.android.com/apk/res-auto/com.android.launcher3">
     <!-- Left screen [1] -->
+    <folder
+        launcher:title="@string/foldname_juegos"
+        launcher:screen="1"
+        launcher:x="2"
+        launcher:y="4" >
+        <favorite
+            launcher:className="com.ea.game.bejeweled2_LATAM.ContentDownload"
+            launcher:packageName="com.ea.game.bejeweled2_LATAM" />
+        <favorite
+            launcher:className="com.ea.monopolymillionaire_embed.AdcActivity"
+            launcher:packageName="com.ea.monopolymillionaire_embed" />
+        <favorite
+            launcher:className="com.ea.ironmonkey.GameActivity"
+            launcher:packageName="com.ea.games.nfs13_embed_latam" />
+        <favorite
+            launcher:className="com.popcap.pvz_embed_latam.Main"
+            launcher:packageName="com.popcap.pvz_embed_latam" />
+        <favorite
+            launcher:className="ver.git.activities.RunActivity"
+            launcher:packageName="com.eamobile.life" />
+    </folder>
     <favorite
         launcher:className="com.android.music.MusicBrowserActivity"
         launcher:packageName="com.android.music"
         launcher:screen="1"
-        launcher:x="1"
-        launcher:y="3" />
-    <favorite
-        launcher:className="com.android.camera.CameraLauncher"
-        launcher:packageName="org.codeaurora.snapcam"
-        launcher:screen="1"
-        launcher:x="2"
-        launcher:y="3" />
-    <favorite
-        launcher:className="com.android.gallery3d.app.Gallery"
-        launcher:packageName="com.android.gallery3d"
-        launcher:screen="1"
         launcher:x="3"
-        launcher:y="3" />
+        launcher:y="4" />
+
+    <appwidget
+        launcher:className="com.gameloft.android.gdc.GDCWidgetProvider"
+        launcher:packageName="com.gameloft.android.gdc"
+        launcher:screen="1"
+        launcher:spanX="4"
+        launcher:spanY="4"
+        launcher:x="0"
+        launcher:y="0" />
 
     <folder
         launcher:screen="2"
         launcher:title="@string/foldname_google"
         launcher:x="0"
-        launcher:y="3" >
+        launcher:y="4" >
         <favorite
             launcher:className="com.google.android.apps.chrome.Main"
             launcher:packageName="com.android.chrome" />
@@ -99,23 +117,35 @@
         launcher:packageName="com.android.vending"
         launcher:screen="2"
         launcher:x="1"
-        launcher:y="3" />
+        launcher:y="4" />
     <favorite
         launcher:className="com.telcel.imk.MainActivity"
         launcher:packageName="com.telcel.imk"
         launcher:screen="2"
         launcher:x="2"
-        launcher:y="3" />
+        launcher:y="4" />
     <favorite
         launcher:className="com.clarovideo.app.ui.activities.SplashActivity"
         launcher:packageName="com.dla.android"
         launcher:screen="2"
         launcher:x="3"
-        launcher:y="3" />
+        launcher:y="4" />
+    <favorite
+        launcher:className="com.android.camera.CameraLauncher"
+        launcher:packageName="org.codeaurora.snapcam"
+        launcher:screen="3"
+        launcher:x="0"
+        launcher:y="4" />
+    <favorite
+        launcher:className="com.android.gallery3d.app.Gallery"
+        launcher:packageName="com.android.gallery3d"
+        launcher:screen="3"
+        launcher:x="1"
+        launcher:y="4" />
 
     <appwidget
-        launcher:className="com.gameloft.android.gdc.GDCWidgetProvider"
-        launcher:packageName="com.gameloft.android.gdc"
+        launcher:className="com.telcel.contenedor.widget.WidgetActivity"
+        launcher:packageName="com.telcel.contenedor"
         launcher:screen="3"
         launcher:spanX="4"
         launcher:spanY="4"

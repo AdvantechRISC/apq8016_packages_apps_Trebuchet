@@ -127,7 +127,9 @@ public class DynamicGrid {
         if (context.getResources().getBoolean(
                 R.bool.config_launcher_customWorkspace_tlcl)
                 || context.getResources().getBoolean(
-                        R.bool.config_launcher_customWorkspace_latamCommon)) {
+                R.bool.config_launcher_customWorkspace_latamCommon)
+                || context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_tlcl_lnx)) {
             deviceProfiles.add(new DeviceProfile("Nexus S",
                     296, 491.33f,  5, 4,  (useLargeIcons ? 58 : 46), (useSmallText ?
                     DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
