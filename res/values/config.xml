@@ -138,4 +138,5 @@
     <bool name="config_launcher_sortLaunchCountDwnldApps">false</bool>
     <bool name="config_launcher_sortDwnldAppsAtEnd">false</bool>
     <bool name="config_launcher_customWorkspace_tlcl_lnx">false</bool>
+    <bool name="config_launcher_hideScrollingWallpaperOption">false</bool>
 </resources>

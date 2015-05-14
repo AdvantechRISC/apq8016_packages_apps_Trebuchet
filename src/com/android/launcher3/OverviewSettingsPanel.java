@@ -10,6 +10,9 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import com.android.launcher3.list.PinnedHeaderListView;
 import com.android.launcher3.list.SettingsPinnedHeaderAdapter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
 
 public class OverviewSettingsPanel {
     public static final String ANDROID_SETTINGS = "com.android.settings";
@@ -58,6 +61,14 @@ public class OverviewSettingsPanel {
                     res.getString(R.string.grid_size_text)
             };
         }
+
+        //Hiding home screen scroll wallpaper on/off option
+        if (res.getBoolean(R.bool.config_launcher_hideScrollingWallpaperOption)) {
+            List<String> list = new ArrayList<String>(Arrays.asList(values));
+            list.remove(res.getString(R.string.scrolling_wallpaper));
+            values = list.toArray(new String[0]);
+        }
+
         String[] valuesDrawer = new String[] {
                 res.getString(R.string.drawer_type),
                 res.getString(R.string.scroll_effect_text),
