@@ -139,4 +139,8 @@
     <bool name="config_launcher_sortDwnldAppsAtEnd">false</bool>
     <bool name="config_launcher_customWorkspace_tlcl_lnx">false</bool>
     <bool name="config_launcher_hideScrollingWallpaperOption">false</bool>
+    <bool name="config_launcher_setMultiLineAllAppsIconLabel">false</bool>
+    <integer name="default_icon_size_small_custom_dp">56</integer>
+    <!-- must be between 0 and 100 -->
+    <integer name="icon_text_scaling_factor">100</integer>
 </resources>

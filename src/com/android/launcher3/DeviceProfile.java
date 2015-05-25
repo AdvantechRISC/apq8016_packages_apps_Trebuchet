@@ -448,7 +448,8 @@ public class DeviceProfile {
     private void updateIconSize(float scale, int drawablePadding, Resources resources,
                                 DisplayMetrics dm) {
         iconSizePx = (int) (DynamicGrid.pxFromDp(iconSize, dm) * scale);
-        iconTextSizePx = (int) (DynamicGrid.pxFromSp(iconTextSize, dm) * scale);
+        iconTextSizePx = (int) (DynamicGrid.pxFromSp(iconTextSize, dm) * scale * (resources
+                .getInteger(R.integer.icon_text_scaling_factor) / 100f));
         iconDrawablePaddingPx = drawablePadding;
         hotseatIconSizePx = (int) (DynamicGrid.pxFromDp(hotseatIconSize, dm) * scale);
 

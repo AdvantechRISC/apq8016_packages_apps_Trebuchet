@@ -1141,6 +1141,12 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         boolean hideIconLabels = SettingsProvider.getBoolean(mLauncher,
                 SettingsProvider.SETTINGS_UI_DRAWER_HIDE_ICON_LABELS,
                 R.bool.preferences_interface_drawer_hide_icon_labels_default);
+        boolean useLargeIcons = SettingsProvider.getBoolean(getContext(),
+                SettingsProvider.SETTINGS_UI_GENERAL_ICONS_LARGE,
+                R.bool.preferences_interface_general_icons_large_default);
+        boolean setMultiLineAllAppsIconLabel = getResources().getBoolean(
+                R.bool.config_launcher_setMultiLineAllAppsIconLabel);
+
         for (int i = startIndex; i < endIndex; ++i) {
             AppInfo info = isCTFlag
                     ? ((page == 0) ? ctFirstPageApps.get(i) : ctApps.get(i))
@@ -1153,6 +1159,13 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             } else {
                 icon = (BubbleTextView) mLayoutInflater.inflate(
                         R.layout.apps_customize_application, layout, false);
+            }
+
+            // Multiline will be disabled in case of large icons enabled ,
+            // as we have lower cell space.
+            if(!useLargeIcons && setMultiLineAllAppsIconLabel) {
+                icon.setSingleLine(false);
+                icon.setMaxLines(2);
             }
 
             icon.applyFromApplicationInfo(info);
