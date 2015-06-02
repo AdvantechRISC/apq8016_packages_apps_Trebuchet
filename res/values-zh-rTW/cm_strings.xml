@@ -43,4 +43,7 @@
   <string name="icon_labels_hide">隱藏</string>
   <string name="protected_app_settings">受保護的應用程式</string>
   <string name="dialog_confirm">確認</string>
+  <string name="drawer_type">佈局</string>
+  <string name="blur_background">背景虛化</string>
+  <string name="small_text_size">小字體設置</string>
 </resources>
