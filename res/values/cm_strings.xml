@@ -89,4 +89,7 @@
 
     <string name="setting_state_disabled">DISABLED</string>
     <string name="download_badge_text">New</string>
+
+    <!-- App not available toast text -->
+    <string name="app_not_available">App not available</string>
 </resources>
