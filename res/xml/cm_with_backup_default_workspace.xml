@@ -82,7 +82,7 @@
         launcher:y="4" />
     <favorite
         launcher:packageName="com.android.gallery3d"
-        launcher:className="com.android.gallery3d.app.Gallery"
+        launcher:className="com.android.gallery3d.app.GalleryActivity"
         launcher:screen="3"
         launcher:x="1"
         launcher:y="4" />
