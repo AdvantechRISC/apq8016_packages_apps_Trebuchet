@@ -143,4 +143,5 @@
     <integer name="default_icon_size_small_custom_dp">56</integer>
     <!-- must be between 0 and 100 -->
     <integer name="icon_text_scaling_factor">100</integer>
+    <bool name="config_launcher_customWorkspace_clr_brzl">false</bool>
 </resources>

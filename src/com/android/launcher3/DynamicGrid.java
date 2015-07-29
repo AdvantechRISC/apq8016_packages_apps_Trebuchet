@@ -101,6 +101,9 @@ public class DynamicGrid {
                 R.bool.config_launcher_customWorkspace_clr)) {
             fourByFourDefaultLayout = R.xml.clr_default_workspace;
         } else if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_clr_brzl)) {
+            fourByFourDefaultLayout = R.xml.clr_brzl_default_workspace;
+        } else if (context.getResources().getBoolean(
                 R.bool.config_launcher_customWorkspace_latamCommon)) {
             fourByFourDefaultLayout = R.xml.latam_common_default_workspace;
         }
@@ -132,7 +135,9 @@ public class DynamicGrid {
                 || context.getResources().getBoolean(
                 R.bool.config_launcher_customWorkspace_latamCommon)
                 || context.getResources().getBoolean(
-                R.bool.config_launcher_customWorkspace_tlcl_lnx)) {
+                R.bool.config_launcher_customWorkspace_tlcl_lnx)
+                || context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_clr_brzl)) {
             deviceProfiles.add(new DeviceProfile("Nexus S",
                     296, 491.33f,  5, 4,  (useLargeIcons ? 58 : 46), (useSmallText ?
                     DEFAULT_TEXT_SIZE_SMALL : DEFAULT_TEXT_SIZE_NORMAL), (hasAA ? 5 : 5),
