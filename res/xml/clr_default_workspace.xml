@@ -134,7 +134,7 @@
         launcher:x="1"
         launcher:y="3" />
     <favorite
-        launcher:className="com.telcel.imk.MainActivity"
+        launcher:className="com.claro.claromusica.latam.MainActivity"
         launcher:packageName="com.claro.claromusica.latam"
         launcher:screen="2"
         launcher:x="2"
