@@ -254,7 +254,14 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
             RectF crop = WallpaperCropActivity.getMaxCropRect(
                     source.getImageWidth(), source.getImageHeight(),
                     wallpaperSize.x, wallpaperSize.y, false);
-            v.setScale(wallpaperSize.x / crop.width());
+
+            if (!a.getResources().
+                    getBoolean(R.bool.config_launcher_disable_wallpaper_scaling)) {
+                v.setScale(wallpaperSize.x / crop.width());
+            } else {
+                v.setScale(1f);
+            }
+
             v.setTouchEnabled(false);
             a.setSystemWallpaperVisiblity(false);
             if (mMoveToLeft) {

@@ -144,4 +144,6 @@
     <!-- must be between 0 and 100 -->
     <integer name="icon_text_scaling_factor">100</integer>
     <bool name="config_launcher_customWorkspace_clr_brzl">false</bool>
+    <!-- Disable wallpaper scaling in wallpaper preview and when user sets wallpaper -->
+    <bool name="config_launcher_disable_wallpaper_scaling">false</bool>
 </resources>
