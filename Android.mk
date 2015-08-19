@@ -52,6 +52,8 @@ LOCAL_OVERRIDES_PACKAGES := Launcher3
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
 LOCAL_PROGUARD_ENABLED := disabled
 
+LOCAL_OVERRIDES_PACKAGES += Home
+
 include $(BUILD_PACKAGE)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))
