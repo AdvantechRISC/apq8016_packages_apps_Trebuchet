@@ -81,7 +81,7 @@
         android:allowBackup="@bool/enable_backup"
         android:backupAgent="com.android.launcher3.LauncherBackupAgentHelper"
         android:hardwareAccelerated="true"
-        android:icon="@mipmap/ic_launcher_home"
+        android:icon="@drawable/launcher_home"
         android:label="@string/cm_application_name"
         android:largeHeap="@bool/config_largeHeap"
         android:restoreAnyVersion="true"
