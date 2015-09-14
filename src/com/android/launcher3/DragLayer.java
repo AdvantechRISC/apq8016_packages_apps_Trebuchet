@@ -109,14 +109,12 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
         mRightHoverDrawable = res.getDrawable(R.drawable.page_hover_right);
         mLeftHoverDrawableActive = res.getDrawable(R.drawable.page_hover_left_active);
         mRightHoverDrawableActive = res.getDrawable(R.drawable.page_hover_right_active);
+        mBackground = res.getDrawable(R.drawable.apps_customize_bg);
     }
 
     public void setup(Launcher launcher, DragController controller) {
         mLauncher = launcher;
         mDragController = controller;
-        if (!mLauncher.getBlurAppPage()) {
-            mBackground = getResources().getDrawable(R.drawable.apps_customize_bg);
-        }
     }
 
     @Override

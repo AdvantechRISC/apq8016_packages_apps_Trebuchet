@@ -1084,11 +1084,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         if (!LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
             Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
             if (bg != null) {
-                if (mLauncher.getBlurAppPage()) {
-                    bg.setAlpha(mPageBackgroundsVisible ? ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA : 0);
-                } else {
-                    bg.setAlpha(mPageBackgroundsVisible ? 255 : 0);
-                }
+                bg.setAlpha(mPageBackgroundsVisible ? 255: 0);
                 layout.setBackground(bg);
             }
         }
@@ -1096,18 +1092,13 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         setVisibilityOnChildren(layout, View.VISIBLE);
     }
 
-    public static final int ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA = (int) (0.5f * 255);
     public void setPageBackgroundsVisible(boolean visible) {
         mPageBackgroundsVisible = visible;
         int childCount = getChildCount();
         for (int i = 0; i < childCount; ++i) {
             Drawable bg = getChildAt(i).getBackground();
             if (bg != null) {
-                if (mLauncher.getBlurAppPage()) {
-                    bg.setAlpha(visible ? ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA : 0);
-                } else {
-                    bg.setAlpha(visible ? 255 : 0);
-                }
+                bg.setAlpha(visible ? 255 : 0);
             }
         }
     }
@@ -1169,9 +1160,6 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             }
 
             icon.applyFromApplicationInfo(info);
-            if (mLauncher.getBlurAppPage()) {
-                icon.setTextColor(0xFF000000);
-            }
             icon.setTextVisibility(!hideIconLabels);
             icon.setOnClickListener(mLauncher);
             icon.setOnLongClickListener(this);

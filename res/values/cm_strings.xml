@@ -75,9 +75,6 @@
     <!-- Protected apps -->
     <string name="protected_app_settings">Protected apps</string>
 
-    <!-- Blurred app page -->
-    <string name="blur_background">Blur background</string>
-
     <!-- Dialog -->
     <string name="dialog_confirm">Confirm</string>
 
