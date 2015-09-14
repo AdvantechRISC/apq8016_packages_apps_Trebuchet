@@ -247,7 +247,21 @@ public class DeviceProfile {
 
         // Snap to the closest hotseat size
         numHotseatIcons = closestProfile.numHotseatIcons;
-        hotseatAllAppsRank = (int) (numHotseatIcons / 2);
+        // Repositioning all apps launch button
+        if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_latamCommon) ||
+                context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_tlcl) ||
+                context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_clr) ||
+                context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_tlcl_lnx)||
+                context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_clr_brzl)) {
+            hotseatAllAppsRank = res.getInteger(R.integer.hotseat_all_apps_index);
+        } else {
+            hotseatAllAppsRank = (int) (numHotseatIcons / 2);
+        }
 
         numRowsBase = (int) numRows;
         int gridResize = SettingsProvider.getIntCustomDefault(context,
@@ -436,7 +450,8 @@ public class DeviceProfile {
     private void updateIconSize(float scale, int drawablePadding, Resources resources,
                                 DisplayMetrics dm) {
         iconSizePx = (int) (DynamicGrid.pxFromDp(iconSize, dm) * scale);
-        iconTextSizePx = (int) (DynamicGrid.pxFromSp(iconTextSize, dm) * scale);
+        iconTextSizePx = (int) (DynamicGrid.pxFromSp(iconTextSize, dm) * scale * (resources
+                .getInteger(R.integer.icon_text_scaling_factor) / 100f));
         iconDrawablePaddingPx = drawablePadding;
         hotseatIconSizePx = (int) (DynamicGrid.pxFromDp(hotseatIconSize, dm) * scale);
 
@@ -588,7 +603,7 @@ public class DeviceProfile {
         if (isTablet() && !isVerticalBarLayout()) {
             return searchBarVisible ? 4 * edgeMarginPx : 0;
         } else {
-            return searchBarVisible ? 2 * edgeMarginPx : 0;
+            return searchBarVisible ? edgeMarginPx : 0;
         }
     }
 
@@ -811,9 +826,13 @@ public class DeviceProfile {
             lp.width = searchBarSpaceWidthPx;
             lp.height = searchBarSpaceHeightPx;
             searchBar.setPadding(
-                    2 * edgeMarginPx,
+                    edgeMarginPx,
                     getSearchBarTopOffset(),
-                    2 * edgeMarginPx, 0);
+                    edgeMarginPx, edgeMarginPx);
+        }
+        if (launcher.mSearchWidgetId >= 0) {
+            // remove padding on widget
+            searchBar.setPadding(0, 0, 0, 0);
         }
         searchBar.setLayoutParams(lp);
 
@@ -925,6 +944,7 @@ public class DeviceProfile {
 
             padding = new Rect();
             if (pagedView != null) {
+                pagedView.updateGridSize();
                 // Constrain the dimensions of all apps so that it does not span the full width
                 int paddingLR = (availableWidthPx - (allAppsCellWidthPx * allAppsNumCols)) /
                         (2 * (allAppsNumCols + 1));
@@ -944,7 +964,15 @@ public class DeviceProfile {
                 padding.bottom = Math.max(0, pageIndicatorHeight - paddingTB);
 
                 pagedView.setWidgetsPageIndicatorPadding(pageIndicatorHeight);
-                fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                    // set background similar to wallpaper dim background to have
+                    // have smoother AllApps transition.
+                    // Alpha for background color is proportional to dim amount
+                    fakePage.setBackgroundColor(res
+                            .getColor(R.color.all_apps_background_dim_color));
+                } else {
+                    fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                }
 
                 // Horizontal padding for the whole paged view
                 int pagedFixedViewPadding =

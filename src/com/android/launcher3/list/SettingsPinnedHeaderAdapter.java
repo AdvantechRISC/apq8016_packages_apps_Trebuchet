@@ -6,7 +6,9 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.graphics.Typeface;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -14,6 +16,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import com.android.launcher3.AppDrawerListAdapter;
 import com.android.launcher3.AppsCustomizePagedView;
 import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
@@ -24,6 +27,8 @@ import com.android.launcher3.settings.SettingsProvider;
 public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
     private static final int PARTITION_TAG = 0;
     private static final int POSITION_TAG = 1;
+    private static final float ENABLED_ALPHA = 1f;
+    private static final float DISABLED_ALPHA = 1f;
 
     private Launcher mLauncher;
     private Context mContext;
@@ -90,9 +95,14 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
 
         Resources res = mLauncher.getResources();
 
+
         boolean current = false;
         String state = "";
-
+        // Hiding home screen search bar on/off option
+        if (res.getBoolean(R.bool.config_launcher_hideHomescrSearchBarOption)
+                && partition == OverviewSettingsPanel.HOME_SETTINGS_POSITION) {
+            position++;
+        }
         switch (partition) {
             case OverviewSettingsPanel.HOME_SETTINGS_POSITION:
                 switch (position) {
@@ -131,19 +141,34 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
             case OverviewSettingsPanel.DRAWER_SETTINGS_POSITION:
                 switch (position) {
                     case 0:
-                        state = mLauncher.getAppsCustomizeTransitionEffect();
-                        state = mapEffectToValue(state);
-                        ((TextView) v.findViewById(R.id.item_state)).setText(state);
+                        updateDrawerTypeSettingsItem(v);
                         break;
                     case 1:
-                        updateDrawerSortSettingsItem(v);
+                        if (!setDisabled(v)) {
+                            state = mLauncher.getAppsCustomizeTransitionEffect();
+                            state = mapEffectToValue(state);
+                            ((TextView) v.findViewById(R.id.item_state)).setText(state);
+                        }
                         break;
                     case 2:
+                        if (!setDisabled(v)) {
+                            updateDrawerSortSettingsItem(v);
+                        }
+                        break;
+                    case 3:
                         current = SettingsProvider.getBoolean(mContext,
                                 SettingsProvider.SETTINGS_UI_DRAWER_HIDE_ICON_LABELS,
                                 R.bool.preferences_interface_drawer_hide_icon_labels_default);
                         state = current ? res.getString(R.string.icon_labels_hide)
                                 : res.getString(R.string.icon_labels_show);
+                        ((TextView) v.findViewById(R.id.item_state)).setText(state);
+                        break;
+                    case 4:
+                        current = SettingsProvider.getBoolean(mContext,
+                                SettingsProvider.SETTINGS_UI_DRAWER_BLUR_BACKGROUND,
+                                R.bool.preferences_interface_drawer_blur_background_default);
+                        state = current ? res.getString(R.string.setting_state_on)
+                                : res.getString(R.string.setting_state_off);
                         ((TextView) v.findViewById(R.id.item_state)).setText(state);
                         break;
                     default:
@@ -156,6 +181,14 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
                         current = SettingsProvider.getBoolean(mContext,
                                 SettingsProvider.SETTINGS_UI_GENERAL_ICONS_LARGE,
                                 R.bool.preferences_interface_general_icons_large_default);
+                        state = current ? res.getString(R.string.setting_state_on)
+                                : res.getString(R.string.setting_state_off);
+                        ((TextView) v.findViewById(R.id.item_state)).setText(state);
+                        break;
+                    case 1:
+                        current = SettingsProvider.getBoolean(mContext,
+                                SettingsProvider.SETTINGS_UI_GENERAL_TEXT_SMALL,
+                                R.bool.preferences_interface_general_text_small_default);
                         state = current ? res.getString(R.string.setting_state_on)
                                 : res.getString(R.string.setting_state_off);
                         ((TextView) v.findViewById(R.id.item_state)).setText(state);
@@ -196,6 +229,20 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
             case InstallTime:
                 state = mLauncher.getResources().getString(
                         R.string.sort_mode_install_time);
+                break;
+        }
+        ((TextView) v.findViewById(R.id.item_state)).setText(state);
+    }
+
+    public void updateDrawerTypeSettingsItem(View v) {
+        String state = "";
+        AppDrawerListAdapter.DrawerType type = mLauncher.getDrawerType();
+        switch (type) {
+            case Drawer:
+                state = mLauncher.getResources().getString(R.string.drawer_type_drawer);
+                break;
+            case Pager:
+                state = mLauncher.getResources().getString(R.string.drawer_type_pager);
                 break;
         }
         ((TextView) v.findViewById(R.id.item_state)).setText(state);
@@ -253,7 +300,11 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
 
             int partition = ((SettingsPosition) v.getTag()).partition;
             int position = ((SettingsPosition) v.getTag()).position;
-
+            // Hiding home screen search bar on/off option
+            if (res.getBoolean(R.bool.config_launcher_hideHomescrSearchBarOption)
+                    && partition == OverviewSettingsPanel.HOME_SETTINGS_POSITION) {
+                position++;
+            }
             switch (partition) {
                 case OverviewSettingsPanel.HOME_SETTINGS_POSITION:
                     switch (position) {
@@ -287,16 +338,27 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
                 case OverviewSettingsPanel.DRAWER_SETTINGS_POSITION:
                     switch (position) {
                         case 0:
-                            mLauncher.onClickTransitionEffectButton(v, true);
+                            onClickDrawerTypeButton();
                             break;
                         case 1:
-                            onClickSortButton();
+                            mLauncher.onClickTransitionEffectButton(v, true);
+
                             break;
                         case 2:
+                            onClickSortButton();
+
+                            break;
+                        case 3:
                             onIconLabelsBooleanChanged(v,
                                     SettingsProvider.SETTINGS_UI_DRAWER_HIDE_ICON_LABELS,
                                     R.bool.preferences_interface_drawer_hide_icon_labels_default);
                             mLauncher.setUpdateDynamicGrid();
+                            break;
+                        case 4:
+                            onSettingsBooleanChanged(v,
+                                    SettingsProvider.SETTINGS_UI_DRAWER_BLUR_BACKGROUND,
+                                    R.bool.preferences_interface_drawer_blur_background_default);
+                            mLauncher.setUpBlurAppPage();
                             break;
                     }
                     break;
@@ -309,6 +371,12 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
                             mLauncher.setUpdateDynamicGrid();
                             break;
                         case 1:
+                            onSettingsBooleanChanged(v,
+                                    SettingsProvider.SETTINGS_UI_GENERAL_TEXT_SMALL,
+                                    R.bool.preferences_interface_general_text_small_default);
+                            mLauncher.setUpdateDynamicGrid();
+                            break;
+                        case 2:
                             Intent intent = new Intent();
                             intent.setClassName(OverviewSettingsPanel.ANDROID_SETTINGS,
                                     OverviewSettingsPanel.ANDROID_PROTECTED_APPS);
@@ -369,5 +437,45 @@ public class SettingsPinnedHeaderAdapter extends PinnedHeaderListAdapter {
         SettingsProvider.putInt(mLauncher, SettingsProvider.SETTINGS_UI_DRAWER_SORT_MODE, sort);
 
         notifyDataSetChanged();
+    }
+
+    private void onClickDrawerTypeButton() {
+        int type = SettingsProvider.getInt(mLauncher,
+                SettingsProvider.SETTINGS_UI_DRAWER_TYPE,
+                R.integer.preferences_interface_drawer_type_default);
+
+        type = (type + 1) % AppDrawerListAdapter.DrawerType.values().length;
+        SettingsProvider.putInt(mLauncher, SettingsProvider.SETTINGS_UI_DRAWER_TYPE, type);
+
+        mLauncher.updateDrawerType();
+
+        notifyDataSetChanged();
+    }
+
+    private boolean setDisabled(View v) {
+        TextView itemState = ((TextView) v.findViewById(R.id.item_state));
+        TextView itemName = ((TextView) v.findViewById(R.id.item_name));
+
+        AppDrawerListAdapter.DrawerType type = mLauncher.getDrawerType();
+
+        boolean isDisabled = false;
+
+        switch (type) {
+            case Drawer:
+                itemState.setAlpha(DISABLED_ALPHA);
+                itemState.setText(mLauncher.getResources()
+                        .getString(R.string.setting_state_disabled));
+                itemName.setAlpha(DISABLED_ALPHA);
+                v.setEnabled(false);
+                isDisabled = true;
+                break;
+            case Pager:
+                itemState.setAlpha(ENABLED_ALPHA);
+                itemName.setAlpha(ENABLED_ALPHA);
+                v.setEnabled(true);
+                break;
+        }
+
+        return isDisabled;
     }
 }

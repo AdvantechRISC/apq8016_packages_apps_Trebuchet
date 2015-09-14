@@ -94,6 +94,7 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
 
     private View mSelectedTile;
     private boolean mIgnoreNextTap;
+    private boolean mResourcePreviewMoveToLeft = false;
     private OnClickListener mThumbnailOnClickListener;
 
     private LinearLayout mWallpapersView;
@@ -231,11 +232,13 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
     public static class ResourceWallpaperInfo extends WallpaperTileInfo {
         private Resources mResources;
         private int mResId;
+        private boolean mMoveToLeft;
 
-        public ResourceWallpaperInfo(Resources res, int resId, Drawable thumb) {
+        public ResourceWallpaperInfo(Resources res, int resId, Drawable thumb, boolean moveToLeft) {
             mResources = res;
             mResId = resId;
             mThumb = thumb;
+            mMoveToLeft = moveToLeft;
         }
         @Override
         public void onClick(WallpaperPickerActivity a) {
@@ -251,9 +254,19 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
             RectF crop = WallpaperCropActivity.getMaxCropRect(
                     source.getImageWidth(), source.getImageHeight(),
                     wallpaperSize.x, wallpaperSize.y, false);
-            v.setScale(wallpaperSize.x / crop.width());
+
+            if (!a.getResources().
+                    getBoolean(R.bool.config_launcher_disable_wallpaper_scaling)) {
+                v.setScale(wallpaperSize.x / crop.width());
+            } else {
+                v.setScale(1f);
+            }
+
             v.setTouchEnabled(false);
             a.setSystemWallpaperVisiblity(false);
+            if (mMoveToLeft) {
+                v.moveToLeft();
+            }
         }
         @Override
         public void onSave(WallpaperPickerActivity a) {
@@ -280,7 +293,7 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
             CropView c = a.getCropView();
 
             Drawable defaultWallpaper = WallpaperManager.getInstance(a).getBuiltInDrawable(
-                    c.getWidth(), c.getHeight(), false, 0.5f, 0.5f);
+                    0, 0, false, 0.5f, 0.5f);
 
             if (defaultWallpaper == null) {
                 Log.w(TAG, "Null default wallpaper encountered.");
@@ -288,9 +301,14 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
                 return;
             }
 
-            c.setTileSource(
-                    new DrawableTileSource(a, defaultWallpaper, DrawableTileSource.MAX_PREVIEW_SIZE), null);
-            c.setScale(1f);
+            c.setTileSource(new DrawableTileSource(
+                    a, defaultWallpaper, DrawableTileSource.MAX_PREVIEW_SIZE), null);
+            Point wallpaperSize = WallpaperCropActivity.getDefaultWallpaperSize(
+                    a.getResources(), a.getWindowManager());
+            RectF crop = WallpaperCropActivity.getMaxCropRect(
+                    defaultWallpaper.getIntrinsicWidth(), defaultWallpaper.getIntrinsicHeight(),
+                    wallpaperSize.x, wallpaperSize.y, false);
+            c.setScale(wallpaperSize.x / crop.width());
             c.setTouchEnabled(false);
             a.setSystemWallpaperVisiblity(false);
         }
@@ -378,6 +396,9 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
     // called by onCreate; this is subclassed to overwrite WallpaperCropActivity
     protected void init() {
         setContentView(R.layout.wallpaper_picker);
+
+        mResourcePreviewMoveToLeft =
+            getResources().getBoolean(R.bool.resource_wallpaper_preview_left_edge);
 
         mCropView = (CropView) findViewById(R.id.cropView);
         mCropView.setVisibility(View.INVISIBLE);
@@ -1017,6 +1038,11 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
                 addWallpapers(bundled, wallpaperRes, r.first.packageName, r.second);
             } catch (PackageManager.NameNotFoundException e) {
             }
+        } else {
+            // Fall back to searching in our resources with the given package name if
+            // The above search fails. If the resource is not found, none will be added.
+            final String packageName = getResources().getResourcePackageName(R.array.wallpapers);
+            addWallpapers(bundled, getResources(), packageName, R.array.wallpapers);
         }
 
         if (partner == null || !partner.hideDefaultWallpaper()) {
@@ -1084,7 +1110,8 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
             }
         }
         if (defaultWallpaperExists) {
-            return new ResourceWallpaperInfo(sysRes, resId, new BitmapDrawable(thumb));
+            return new ResourceWallpaperInfo(sysRes, resId,
+                    new BitmapDrawable(thumb), mResourcePreviewMoveToLeft);
         }
         return null;
     }
@@ -1136,21 +1163,27 @@ public class WallpaperPickerActivity extends WallpaperCropActivity {
 
     private void addWallpapers(ArrayList<WallpaperTileInfo> known, Resources res,
             String packageName, int listResId) {
-        final String[] extras = res.getStringArray(listResId);
-        for (String extra : extras) {
-            int resId = res.getIdentifier(extra, "drawable", packageName);
-            if (resId != 0) {
-                final int thumbRes = res.getIdentifier(extra + "_small", "drawable", packageName);
+        try {
+            final String[] extras = res.getStringArray(listResId);
+            for (String extra : extras) {
+                int resId = res.getIdentifier(extra, "drawable", packageName);
+                if (resId != 0) {
+                    final int thumbRes = res.getIdentifier(extra + "_small", "drawable",
+                                                           packageName);
 
-                if (thumbRes != 0) {
-                    ResourceWallpaperInfo wallpaperInfo =
-                            new ResourceWallpaperInfo(res, resId, res.getDrawable(thumbRes));
-                    known.add(wallpaperInfo);
-                    // Log.d(TAG, "add: [" + packageName + "]: " + extra + " (" + res + ")");
+                    if (thumbRes != 0) {
+                        ResourceWallpaperInfo wallpaperInfo =
+                                new ResourceWallpaperInfo(res, resId,
+                                        res.getDrawable(thumbRes), mResourcePreviewMoveToLeft);
+                        known.add(wallpaperInfo);
+                        // Log.d(TAG, "add: [" + packageName + "]: " + extra + " (" + res + ")");
+                    }
+                } else {
+                    Log.e(TAG, "Couldn't find wallpaper " + extra);
                 }
-            } else {
-                Log.e(TAG, "Couldn't find wallpaper " + extra);
             }
+        } catch (Resources.NotFoundException e) {
+            Log.e(TAG, "No wallpapers found, resource could not be located + " + listResId);
         }
     }
 

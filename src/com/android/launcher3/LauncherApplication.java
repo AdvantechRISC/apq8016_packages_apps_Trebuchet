@@ -17,11 +17,28 @@
 package com.android.launcher3;
 
 import android.app.Application;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 
 public class LauncherApplication extends Application {
     public static boolean LAUNCHER_SHOW_UNREAD_NUMBER;
     public static boolean LAUNCHER_SHORTCUT_ENABLED;
     public static boolean SHOW_CTAPP_FEATURE;
+    public static boolean LAUNCHER_BACKUP_SHORTCUT_ENABLED;
+    public static boolean LAUNCHER_MMX_SHORTCUT_ENABLED;
+    public static boolean LAUNCHER_SFR_SHORTCUT_ENABLED;
+    public static boolean sConfigLauncherFixAllAppsScr1Scr2;
+    public static boolean sConfigLauncherAllAppsBgTransparency;
+    public static boolean sConfigLauncherNewAppsBadge;
+    public static boolean sConfigLauncherSortLaunchCountDwnldApps;
+    public static boolean sConfigLauncherSortDwnldAppsAtEnd;
+
+    private String mStkAppName = new String();
+    private final String STK_PACKAGE_INTENT_ACTION_NAME =
+            "org.codeaurora.carrier.ACTION_TELEPHONY_SEND_STK_TITLE";
+    private final String STK_APP_NAME = "StkTitle";
 
     @Override
     public void onCreate() {
@@ -31,8 +48,47 @@ public class LauncherApplication extends Application {
         LAUNCHER_SHORTCUT_ENABLED = getResources().getBoolean(
                 R.bool.config_launcher_shortcut);
         SHOW_CTAPP_FEATURE = getResources().getBoolean(R.bool.config_launcher_page);
+        LAUNCHER_BACKUP_SHORTCUT_ENABLED =
+                getResources().getBoolean(R.bool.config_launcher_show_backup_shortcut);
+        LAUNCHER_MMX_SHORTCUT_ENABLED =
+                getResources().getBoolean(R.bool.config_mmx_enabled);
+        LAUNCHER_SFR_SHORTCUT_ENABLED =
+                getResources().getBoolean(R.bool.config_srf_enabled);
+        sConfigLauncherFixAllAppsScr1Scr2 =
+                getResources().getBoolean(R.bool.config_launcher_fixAllAppsScr1Scr2);
+        sConfigLauncherAllAppsBgTransparency = getResources().getBoolean(
+                R.bool.config_launcher_AllAppsBgTransparency);
+        sConfigLauncherNewAppsBadge =
+                getResources().getBoolean(R.bool.config_launcher_newAppsBadge);
+        sConfigLauncherSortLaunchCountDwnldApps =
+                getResources().getBoolean(R.bool.config_launcher_sortLaunchCountDwnldApps);
+        sConfigLauncherSortDwnldAppsAtEnd = getResources().getBoolean(
+                R.bool.config_launcher_sortDwnldAppsAtEnd);
+
         LauncherAppState.setApplicationContext(this);
         LauncherAppState.getInstance();
+        if (getResources().getBoolean(R.bool.config_launcher_stkAppRename)) {
+            registerAppNameChangeReceiver();
+        }
+    }
+
+    private void registerAppNameChangeReceiver() {
+        IntentFilter intentFilter = new IntentFilter(STK_PACKAGE_INTENT_ACTION_NAME);
+        registerReceiver(appNameChangeReceiver, intentFilter);
+    }
+
+    /**
+     * Receiver for STK Name change broadcast
+     */
+    private BroadcastReceiver appNameChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            mStkAppName = intent.getStringExtra(STK_APP_NAME);
+        }
+    };
+
+    public String getStkAppName(){
+        return mStkAppName;
     }
 
     @Override

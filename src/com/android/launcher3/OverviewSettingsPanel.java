@@ -10,6 +10,9 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import com.android.launcher3.list.PinnedHeaderListView;
 import com.android.launcher3.list.SettingsPinnedHeaderAdapter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
 
 public class OverviewSettingsPanel {
     public static final String ANDROID_SETTINGS = "com.android.settings";
@@ -40,21 +43,42 @@ public class OverviewSettingsPanel {
                 res.getString(R.string.home_screen_settings),
                 res.getString(R.string.drawer_settings),
                 res.getString(R.string.app_settings)};
+        String[] values;
+        // Hiding home screen search bar on/off option
+        if (res.getBoolean(R.bool.config_launcher_hideHomescrSearchBarOption)) {
+            values = new String[] {
+                    res.getString(R.string.scroll_effect_text),
+                    res.getString(R.string.icon_labels),
+                    res.getString(R.string.scrolling_wallpaper),
+                    res.getString(R.string.grid_size_text)
+            };
+        } else {
+            values = new String[] {
+                    res.getString(R.string.home_screen_search_text),
+                    res.getString(R.string.scroll_effect_text),
+                    res.getString(R.string.icon_labels),
+                    res.getString(R.string.scrolling_wallpaper),
+                    res.getString(R.string.grid_size_text)
+            };
+        }
 
-        String[] values = new String[]{
-                res.getString(R.string.home_screen_search_text),
-                res.getString(R.string.scroll_effect_text),
-                res.getString(R.string.icon_labels),
-                res.getString(R.string.scrolling_wallpaper),
-                res.getString(R.string.grid_size_text)};
+        //Hiding home screen scroll wallpaper on/off option
+        if (res.getBoolean(R.bool.config_launcher_hideScrollingWallpaperOption)) {
+            List<String> list = new ArrayList<String>(Arrays.asList(values));
+            list.remove(res.getString(R.string.scrolling_wallpaper));
+            values = list.toArray(new String[0]);
+        }
 
         String[] valuesDrawer = new String[] {
+                res.getString(R.string.drawer_type),
                 res.getString(R.string.scroll_effect_text),
                 res.getString(R.string.drawer_sorting_text),
-                res.getString(R.string.icon_labels)};
+                res.getString(R.string.icon_labels),
+                res.getString(R.string.blur_background)};
 
         String[] valuesApp = new String[] {
                 res.getString(R.string.larger_icons_text),
+                res.getString(R.string.small_text_size),
                 res.getString(R.string.protected_app_settings)};
 
 
@@ -90,7 +114,6 @@ public class OverviewSettingsPanel {
         ((SlidingUpPanelLayout) mOverviewPanel)
                 .setPanelSlideListener(new SettingsSimplePanelSlideListener());
 
-        //Quick Settings Buttons
         View widgetButton = mLauncher.findViewById(R.id.widget_button);
         widgetButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -109,6 +132,7 @@ public class OverviewSettingsPanel {
         });
         wallpaperButton.setOnTouchListener(mLauncher.getHapticFeedbackTouchListener());
 
+        //Quick Settings Button
         View settingsButton = mLauncher.findViewById(R.id.settings_button);
         settingsButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -120,11 +144,25 @@ public class OverviewSettingsPanel {
         });
         settingsButton.setOnTouchListener(mLauncher.getHapticFeedbackTouchListener());
 
+        //Manage Apps Button
+        View manageAppsButton = mLauncher.findViewById(R.id.manage_apps_button);
+        manageAppsButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View arg0) {
+                if (!mLauncher.getWorkspace().isSwitchingState()) {
+                    mLauncher.startManageApps();
+                }
+            }
+        });
+        manageAppsButton.setOnTouchListener(mLauncher.getHapticFeedbackTouchListener());
+
         View defaultScreenButton = mLauncher.findViewById(R.id.default_screen_button);
         defaultScreenButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View arg0) {
-                mLauncher.getWorkspace().onClickDefaultScreenButton();
+                if (!mLauncher.getWorkspace().isSwitchingState()) {
+                    mLauncher.getWorkspace().onClickDefaultScreenButton();
+                }
             }
         });
 

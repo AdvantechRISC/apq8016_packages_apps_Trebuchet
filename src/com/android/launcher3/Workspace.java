@@ -64,8 +64,6 @@ import android.view.ViewPropertyAnimator;
 import android.view.animation.AccelerateDecelerateInterpolator;
 
 import android.view.accessibility.AccessibilityManager;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.widget.TextView;
@@ -133,7 +131,6 @@ public class Workspace extends SmoothPagedView
     private final WallpaperManager mWallpaperManager;
     private IBinder mWindowToken;
 
-    private int mOriginalDefaultPage;
     private int mDefaultPage;
     private long mDefaultScreenId;
 
@@ -352,8 +349,6 @@ public class Workspace extends SmoothPagedView
 
         mLauncher = (Launcher) context;
         final Resources res = getResources();
-        mWorkspaceFadeInAdjacentScreens = LauncherAppState.getInstance().getDynamicGrid().
-                getDeviceProfile().shouldFadeAdjacentWorkspaceScreens();
         mFadeInAdjacentScreens = false;
         mWallpaperManager = WallpaperManager.getInstance(context);
 
@@ -365,9 +360,9 @@ public class Workspace extends SmoothPagedView
             res.getInteger(R.integer.config_workspaceSpringLoadShrinkPercentage) / 100.0f;
         mOverviewModeShrinkFactor = grid.getOverviewModeScale();
         mCameraDistance = res.getInteger(R.integer.config_cameraDistance);
-        mOriginalDefaultPage = mDefaultPage = a.getInt(R.styleable.Workspace_defaultScreen, 1);
+        mDefaultPage = a.getInt(R.styleable.Workspace_defaultScreen, 1);
         mDefaultScreenId = SettingsProvider.getLongCustomDefault(context,
-            SettingsProvider.SETTINGS_UI_HOMESCREEN_DEFAULT_SCREEN_ID, -1);
+            SettingsProvider.SETTINGS_UI_HOMESCREEN_DEFAULT_SCREEN_ID, mDefaultPage);
         a.recycle();
 
         setOnHierarchyChangeListener(this);
@@ -638,9 +633,6 @@ public class Workspace extends SmoothPagedView
 
         addFullScreenPage(customScreen);
 
-        // Ensure that the current page and default page are maintained.
-        mDefaultPage = mOriginalDefaultPage + 1;
-
         // Update the custom content hint
         if (mRestorePage != INVALID_RESTORE_PAGE) {
             mRestorePage = mRestorePage + 1;
@@ -665,9 +657,6 @@ public class Workspace extends SmoothPagedView
         }
 
         mCustomContentCallbacks = null;
-
-        // Ensure that the current page and default page are maintained.
-        mDefaultPage = mOriginalDefaultPage - 1;
 
         // Update the custom content hint
         if (mRestorePage != INVALID_RESTORE_PAGE) {
@@ -1365,6 +1354,7 @@ public class Workspace extends SmoothPagedView
         // Don't use all the wallpaper for parallax until you have at least this many pages
         private final int MIN_PARALLAX_PAGE_SPAN = 3;
         int mNumScreens;
+        boolean mCompletedInitialOffset;
 
         public WallpaperOffsetInterpolator() {
             mChoreographer = Choreographer.getInstance();
@@ -1379,7 +1369,8 @@ public class Workspace extends SmoothPagedView
         private void updateOffset(boolean force) {
             if (mWaitingForUpdate || force) {
                 mWaitingForUpdate = false;
-                if (computeScrollOffset() && mWindowToken != null) {
+                if ((!mCompletedInitialOffset || computeScrollOffset()) && mWindowToken != null) {
+                    mCompletedInitialOffset = true;
                     try {
                         mWallpaperManager.setWallpaperOffsets(mWindowToken,
                                 mWallpaperOffset.getCurrX(), 0.5f);
@@ -2134,6 +2125,10 @@ public class Workspace extends SmoothPagedView
         showOutlines();
         // Reordering handles its own animations, disable the automatic ones.
         disableLayoutTransitions();
+
+        mLauncher.getOverviewPanel().animate()
+                .alpha(0f)
+                .start();
     }
 
     protected void onEndReordering() {
@@ -2156,6 +2151,13 @@ public class Workspace extends SmoothPagedView
 
         // Re-enable auto layout transitions for page deletion.
         enableLayoutTransitions();
+
+        // Show the default screen button
+        updateDefaultScreenButton();
+
+        mLauncher.getOverviewPanel().animate()
+                .alpha(1f)
+                .start();
     }
 
     public boolean isInOverviewMode() {
@@ -2170,6 +2172,13 @@ public class Workspace extends SmoothPagedView
         return true;
     }
 
+    public boolean resetOverviewMode() {
+        //reset overviewmode without any animations
+        enableOverviewMode(false, -1, false);
+        enableOverviewMode(true, -1, false);
+        return true;
+    }
+
     public void exitOverviewMode(boolean animated) {
         exitOverviewMode(-1, animated);
     }
@@ -2181,7 +2190,7 @@ public class Workspace extends SmoothPagedView
     }
 
     private void enableOverviewMode(boolean enable, int snapPage, boolean animated) {
-        // Check to see if new Settings need to taken
+        // Check to see if new Settings need to be taken
         reloadSettings();
         mLauncher.updateGridIfNeeded();
 
@@ -2300,7 +2309,7 @@ public class Workspace extends SmoothPagedView
         float finalHotseatAndPageIndicatorAlpha = (stateIsNormal || stateIsSpringLoaded) ? 1f : 0f;
         final float finalOverviewPanelAlpha = stateIsOverview ? 1f : 0f;
         float finalSearchBarAlpha = !stateIsNormal ? 0f : 1f;
-        float finalWorkspaceTranslationY = stateIsOverview || stateIsOverviewHidden ?
+        final float finalWorkspaceTranslationY = stateIsOverview || stateIsOverviewHidden ?
                 getOverviewModeTranslationY() : 0;
 
         boolean workspaceToAllApps = (oldStateIsNormal && stateIsNormalHidden);
@@ -2308,6 +2317,11 @@ public class Workspace extends SmoothPagedView
         boolean allAppsToWorkspace = (stateIsNormalHidden && stateIsNormal);
         final boolean workspaceToOverview = (oldStateIsNormal && stateIsOverview);
         final boolean overviewToWorkspace = (oldStateIsOverview && stateIsNormal);
+
+        if (overviewToWorkspace || overviewToAllApps) {
+            // Check to see if new Settings need to be taken
+            reloadSettings();
+        }
 
         mNewScale = 1.0f;
 
@@ -2404,6 +2418,15 @@ public class Workspace extends SmoothPagedView
                 .translationY(finalWorkspaceTranslationY)
                 .setDuration(duration)
                 .setInterpolator(mZoomInInterpolator);
+            scale.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    // in low power mode the animation doesn't play, so set the end value here
+                    setScaleX(mNewScale);
+                    setScaleY(mNewScale);
+                    setTranslationY(finalWorkspaceTranslationY);
+                }
+            });
             anim.play(scale);
             for (int index = 0; index < getChildCount(); index++) {
                 final int i = index;
@@ -2417,11 +2440,20 @@ public class Workspace extends SmoothPagedView
                         layerViews.add(cl);
                     }
                     if (mOldAlphas[i] != mNewAlphas[i] || currentAlpha != mNewAlphas[i]) {
+                        final View shortcutAndWidgets = cl.getShortcutsAndWidgets();
                         LauncherViewPropertyAnimator alphaAnim =
-                            new LauncherViewPropertyAnimator(cl.getShortcutsAndWidgets());
+                            new LauncherViewPropertyAnimator(shortcutAndWidgets);
                         alphaAnim.alpha(mNewAlphas[i])
                             .setDuration(duration)
                             .setInterpolator(mZoomInInterpolator);
+                        alphaAnim.addListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                // in low power mode the animation doesn't play,
+                                // so set the end value here
+                                shortcutAndWidgets.setAlpha(mNewAlphas[i]);
+                            }
+                        });
                         anim.play(alphaAnim);
                     }
                     if (mOldBackgroundAlphas[i] != 0 ||
@@ -2445,7 +2477,8 @@ public class Workspace extends SmoothPagedView
             if (pageIndicator != null) {
                 pageIndicatorAlpha = new LauncherViewPropertyAnimator(pageIndicator)
                     .alpha(finalHotseatAndPageIndicatorAlpha).withLayer();
-                pageIndicatorAlpha.addListener(new AlphaUpdateListener(pageIndicator));
+                pageIndicatorAlpha.addListener(
+                        new AlphaUpdateListener(pageIndicator, finalHotseatAndPageIndicatorAlpha));
             } else {
                 // create a dummy animation so we don't need to do null checks later
                 pageIndicatorAlpha = ValueAnimator.ofFloat(0, 0);
@@ -2453,15 +2486,19 @@ public class Workspace extends SmoothPagedView
 
             Animator hotseatAlpha = new LauncherViewPropertyAnimator(hotseat)
                 .alpha(finalHotseatAndPageIndicatorAlpha).withLayer();
-            hotseatAlpha.addListener(new AlphaUpdateListener(hotseat));
+            hotseatAlpha.addListener(
+                    new AlphaUpdateListener(hotseat, finalHotseatAndPageIndicatorAlpha));
 
             Animator searchBarAlpha = new LauncherViewPropertyAnimator(searchBar)
                 .alpha(finalSearchBarAlpha).withLayer();
-            if (mShowSearchBar) searchBarAlpha.addListener(new AlphaUpdateListener(searchBar));
+            if (mShowSearchBar) {
+                searchBarAlpha.addListener(new AlphaUpdateListener(searchBar, finalSearchBarAlpha));
+            }
 
             Animator overviewPanelAlpha = new LauncherViewPropertyAnimator(overviewPanel)
                 .alpha(finalOverviewPanelAlpha).withLayer();
-            overviewPanelAlpha.addListener(new AlphaUpdateListener(overviewPanel));
+            overviewPanelAlpha.addListener(
+                    new AlphaUpdateListener(overviewPanel, finalOverviewPanelAlpha));
 
             // For animation optimations, we may need to provide the Launcher transition
             // with a set of views on which to force build layers in certain scenarios.
@@ -2559,7 +2596,7 @@ public class Workspace extends SmoothPagedView
         }
         mLauncher.updateVoiceButtonProxyVisible(false);
 
-        if (stateIsNormal) {
+        if (stateIsNormal || stateIsNormalHidden) {
             animateBackgroundGradient(0f, animated);
         } else {
             animateBackgroundGradient(getResources().getInteger(
@@ -2570,8 +2607,10 @@ public class Workspace extends SmoothPagedView
 
     static class AlphaUpdateListener implements AnimatorUpdateListener, AnimatorListener {
         View view;
-        public AlphaUpdateListener(View v) {
+        float endAlpha;
+        public AlphaUpdateListener(View v, float target) {
             view = v;
+            endAlpha = target;
         }
 
         @Override
@@ -2597,6 +2636,9 @@ public class Workspace extends SmoothPagedView
 
         @Override
         public void onAnimationEnd(Animator arg0) {
+            // in low power mode the animation doesn't play, so we need to set the end alpha
+            // before calling updateVisibility
+            view.setAlpha(endAlpha);
             updateVisibility(view);
         }
 
@@ -4905,6 +4947,90 @@ public class Workspace extends SmoothPagedView
         stripEmptyScreens();
     }
 
+    void updateUnvailableItemsInCellLayout(CellLayout parent, ArrayList<String> packages) {
+        final HashSet<String> packageNames = new HashSet<String>();
+        packageNames.addAll(packages);
+
+        ViewGroup layout = parent.getShortcutsAndWidgets();
+        int childCount = layout.getChildCount();
+        for (int i = 0; i < childCount; ++i) {
+            View view = layout.getChildAt(i);
+            if (view instanceof BubbleTextView) {
+                ItemInfo info = (ItemInfo) view.getTag();
+                if (info instanceof ShortcutInfo) {
+                    Intent intent = info.getIntent();
+                    ComponentName cn = intent != null ? intent.getComponent() : null;
+                    if (cn != null && packageNames.contains(cn.getPackageName())) {
+                        ShortcutInfo shortcut = (ShortcutInfo) info;
+                        if (!shortcut.isDisabled) {
+                            shortcut.isDisabled = true;
+                            ((BubbleTextView) view)
+                                    .applyFromShortcutInfo(shortcut, mIconCache, true);
+                        }
+                    }
+                }
+            } else if (view instanceof FolderIcon) {
+                final Folder folder = ((FolderIcon)view).getFolder();
+                updateUnvailableItemsInCellLayout(folder.getContent(), packages);
+                folder.invalidate();
+            }
+        }
+    }
+
+    void updateUnavailableItemsByPackageName(final ArrayList<String> packages) {
+        ArrayList<CellLayout> cellLayouts = getWorkspaceAndHotseatCellLayouts();
+        for (CellLayout layoutParent : cellLayouts) {
+            updateUnvailableItemsInCellLayout(layoutParent, packages);
+        }
+    }
+
+    /**
+     * Updates shortcuts to an app that was previously unavailable in the given cell layout
+     * @param parent CellLayout to check childen for shortcuts to the available app
+     * @param appInfos List of item infos.  Items are assumed to be of type AppInfo
+     */
+    void updateAvailabeItemsInCellLayout(CellLayout parent, final ArrayList<ItemInfo> appInfos) {
+        ViewGroup layout = parent.getShortcutsAndWidgets();
+        int childCount = layout.getChildCount();
+        for (int i = 0; i < childCount; ++i) {
+            View view = layout.getChildAt(i);
+            if (view instanceof BubbleTextView) {
+                ItemInfo info = (ItemInfo) view.getTag();
+                if (info instanceof ShortcutInfo) {
+                    Intent intent = info.getIntent();
+                    ComponentName cn = intent != null ? intent.getComponent() : null;
+                    for (ItemInfo itemInfo : appInfos) {
+                        AppInfo appInfo = (AppInfo) itemInfo;
+                        if (cn != null && cn.getPackageName().equals(
+                                appInfo.componentName.getPackageName())) {
+                            ShortcutInfo shortcut = (ShortcutInfo) info;
+                            if (shortcut.isDisabled) {
+                                shortcut.isDisabled = false;
+                                ((BubbleTextView) view)
+                                        .applyFromShortcutInfo(shortcut, mIconCache, true);
+                            }
+                        }
+                    }
+                }
+            } else if (view instanceof FolderIcon) {
+                final Folder folder = ((FolderIcon)view).getFolder();
+                updateAvailabeItemsInCellLayout(folder.getContent(), appInfos);
+                folder.invalidate();
+            }
+        }
+    }
+
+    /**
+     * Updates shortcuts to an app that was previously unavailable
+     * @param appInfos List of item infos.  Items are assumed to be of type AppInfo
+     */
+    void updateAvailableItems(final ArrayList<ItemInfo> appInfos) {
+        ArrayList<CellLayout> cellLayouts = getWorkspaceAndHotseatCellLayouts();
+        for (CellLayout layoutParent : cellLayouts) {
+            updateAvailabeItemsInCellLayout(layoutParent, appInfos);
+        }
+    }
+
     interface ItemOperator {
         /**
          * Process the next itemInfo, possibly with side-effect on {@link ItemOperator#value}.
@@ -4991,7 +5117,7 @@ public class Workspace extends SmoothPagedView
                     ComponentName cn = shortcutInfo.getTargetComponent();
                     AppInfo appInfo = appsMap.get(cn);
                     if (user.equals(shortcutInfo.user) && cn != null
-                            && LauncherModel.isShortcutInfoUpdateable(info)
+                            && LauncherModel.isShortcutInfoUpdateable(getContext(), info)
                             && pkgNames.contains(cn.getPackageName())) {
                         boolean promiseStateChanged = false;
                         boolean infoUpdated = false;

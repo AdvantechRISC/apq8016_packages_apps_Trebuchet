@@ -23,7 +23,10 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_STATIC_JAVA_LIBRARIES := android-support-v13
+LOCAL_STATIC_JAVA_LIBRARIES := android-support-v13 \
+                               android-support-v7-recyclerview \
+                               guava
+LOCAL_JAVA_LIBRARIES := telephony-common
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src) \
     $(call all-java-files-under, WallpaperPicker/src) \
@@ -38,16 +41,16 @@ LOCAL_PROTOC_FLAGS := --proto_path=$(LOCAL_PATH)/protos/
 
 # LOCAL_SDK_VERSION := 21
 
-LOCAL_PACKAGE_NAME := Trebuchet
+LOCAL_PACKAGE_NAME := Launcher3
 LOCAL_PRIVILEGED_MODULE := true
 #LOCAL_CERTIFICATE := shared
 
 LOCAL_AAPT_FLAGS += --rename-manifest-package com.cyanogenmod.trebuchet
 
-LOCAL_OVERRIDES_PACKAGES := Launcher3
-
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
 LOCAL_PROGUARD_ENABLED := disabled
+
+LOCAL_OVERRIDES_PACKAGES += Home
 
 include $(BUILD_PACKAGE)
 

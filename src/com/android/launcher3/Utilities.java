@@ -41,6 +41,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.PaintDrawable;
 import android.os.Build;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -78,12 +79,18 @@ public final class Utilities {
     static final String FORCE_ENABLE_ROTATION_PROPERTY = "launcher_force_rotate";
     public static boolean sForceEnableRotation = isPropertyEnabled(FORCE_ENABLE_ROTATION_PROPERTY);
 
-   static Bitmap createIconBitmap(Drawable icon, Context context, int count) {
+    static Bitmap createIconBitmap(Drawable icon, Context context, int count) {
+        return createIconBitmap(icon, context, count, false);
+    }
+
+   static Bitmap createIconBitmap(Drawable icon, Context context,
+           int count, boolean setNewDownloadedBadge) {
        Bitmap b = createIconBitmap(icon, context);
 
-       if (!LauncherApplication.LAUNCHER_SHOW_UNREAD_NUMBER || count <= 0) {
-           return b;
-       }
+        if ((!LauncherApplication.sConfigLauncherNewAppsBadge || !setNewDownloadedBadge)
+                && (!LauncherApplication.LAUNCHER_SHOW_UNREAD_NUMBER || count <= 0)) {
+            return b;
+        }
 
        int textureWidth = b.getWidth();
        final Resources resources = context.getResources();
@@ -100,6 +107,13 @@ public final class Utilities {
            text = "999+";
        }
 
+        // set download badge for apps without unread count.
+        boolean setDownloadBadge = setNewDownloadedBadge
+                && (!LauncherApplication.LAUNCHER_SHOW_UNREAD_NUMBER || count <= 0);
+        if (setDownloadBadge) {
+            text = resources.getString(R.string.download_badge_text);
+        }
+
        float count_hight = resources.getDimension(R.dimen.infomation_count_height);
        float padding = resources.getDimension(R.dimen.infomation_count_padding);
        float radius = resources.getDimension(R.dimen.infomation_count_circle_radius);
@@ -111,6 +125,10 @@ public final class Utilities {
        Paint paint = new Paint();
        paint.setAntiAlias(true);
        paint.setColor(resources.getColor(R.color.infomation_count_circle_color));
+
+        if (setDownloadBadge) {
+            paint.setColor(resources.getColor(R.color.download_badge_circle_color));
+        }
        canvas.drawRoundRect(rect , radius, radius, paint);
 
        float x = textureWidth - (width + textwidth ) / 2 - 1;
@@ -557,5 +575,12 @@ public final class Utilities {
             }
         }
         return null;
+    }
+
+    public static float convertDpToPixel(float dp, Context context){
+        Resources resources = context.getResources();
+        DisplayMetrics metrics = resources.getDisplayMetrics();
+        float px = dp * (metrics.densityDpi / (float) DisplayMetrics.DENSITY_DEFAULT);
+        return px;
     }
 }

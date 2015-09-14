@@ -258,4 +258,36 @@ class AllAppsList {
 
         return null;
     }
+
+    public AppInfo changeDownloadedAppIcon(Context context, ComponentName component) {
+
+        if (component == null) {
+            return null;
+        }
+
+        LauncherAppsCompat launcherApps = LauncherAppsCompat.getInstance(context);
+        UserHandleCompat myUserHandle = UserHandleCompat.myUserHandle();
+        List<LauncherActivityInfoCompat> matches =
+                launcherApps.getActivityList(component.getPackageName(), myUserHandle);
+
+        for (LauncherActivityInfoCompat launcherActivityInfoCompat : matches) {
+            if (component.getPackageName().equals(
+                    launcherActivityInfoCompat.getComponentName().getPackageName())) {
+
+                AppInfo appInfo = findApplicationInfoLocked(
+                        component.getPackageName(), myUserHandle,
+                        component.getClassName());
+
+                if (appInfo == null) {
+                    return null;
+                } else {
+                    mIconCache.remove(appInfo.componentName, myUserHandle);
+                    mIconCache.getTitleAndIcon(appInfo, launcherActivityInfoCompat, null);
+                    return appInfo;
+                }
+            }
+        }
+
+        return null;
+    }
 }

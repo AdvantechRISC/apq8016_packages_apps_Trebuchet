@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.drm.OmaDrmHelper;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
@@ -333,8 +334,18 @@ public class WallpaperCropActivity extends Activity {
         // this device
         int rotation = getRotationFromExif(res, resId);
         Point inSize = mCropView.getSourceDimensions();
-        Point outSize = getDefaultWallpaperSize(getResources(),
-                getWindowManager());
+        Point outSize = null;
+
+        // TODO: Improvise solution to bypass cropping functionality.
+        if (!res.
+                getBoolean(R.bool.config_launcher_disable_wallpaper_scaling)) {
+            outSize = getDefaultWallpaperSize(getResources(),
+                    getWindowManager());
+        } else {
+            // Do not double wallpaper width.
+            outSize = inSize;
+        }
+
         RectF crop = getMaxCropRect(
                 inSize.x, inSize.y, outSize.x, outSize.y, false);
         Runnable onEndCrop = new Runnable() {
@@ -540,6 +551,15 @@ public class WallpaperCropActivity extends Activity {
                         "image byte array given");
             } else {
                 try {
+                    String filepath = mInFilePath;
+                    if(mInUri != null){
+                        filepath = OmaDrmHelper.getFilePath(mContext, mInUri);
+                    }
+                    if(OmaDrmHelper.isDrmFile(filepath)){
+                        byte[] bytes = OmaDrmHelper.getDrmImageBytes(filepath);
+                        return new ByteArrayInputStream(bytes);
+                    }
+
                     if (mInUri != null) {
                         return new BufferedInputStream(
                                 mContext.getContentResolver().openInputStream(mInUri));

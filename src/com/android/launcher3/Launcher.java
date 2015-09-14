@@ -33,6 +33,7 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.app.Dialog;
 import android.app.SearchManager;
+import android.appwidget.AppWidgetHost;
 import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
@@ -45,6 +46,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
@@ -69,13 +71,17 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.StrictMode;
 import android.os.SystemClock;
+import android.os.UserHandle;
 import android.speech.RecognizerIntent;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 import android.text.method.TextKeyListener;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Pair;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
 import android.view.Gravity;
@@ -98,6 +104,7 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
+import android.view.animation.OvershootInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Advanceable;
 import android.widget.FrameLayout;
@@ -106,6 +113,7 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.internal.telephony.cat.AppInterface;
 import com.android.launcher3.DropTarget.DragObject;
 import com.android.launcher3.PagedView.PageSwitchListener;
 import com.android.launcher3.compat.AppWidgetManagerCompat;
@@ -146,6 +154,8 @@ public class Launcher extends Activity
     static final String TAG = "Launcher";
     static final boolean LOGD = false;
 
+    private boolean ALLAPPS_BLUR_ENABLED = false;
+
     DeviceProfile mGrid;
 
     static final boolean PROFILE_STARTUP = false;
@@ -165,6 +175,8 @@ public class Launcher extends Activity
     private static final int REQUEST_BIND_APPWIDGET = 11;
     private static final int REQUEST_RECONFIGURE_APPWIDGET = 12;
     public static final int REQUEST_TRANSITION_EFFECTS = 14;
+
+    private static final float OVERSHOOT_TENSION = 1.4f;
 
     static final int REQUEST_PICK_ICON = 13;
 
@@ -225,6 +237,8 @@ public class Launcher extends Activity
     static final String FIRST_LOAD_COMPLETE = "launcher.first_load_complete";
     static final String ACTION_FIRST_LOAD_COMPLETE =
             "com.android.launcher3.action.FIRST_LOAD_COMPLETE";
+    static final String ACTION_MANAGE_APPS=
+            "android.settings.MANAGE_APPLICATIONS_SETTINGS";
 
     private static final String TOOLBAR_ICON_METADATA_NAME = "com.android.launcher.toolbar_icon";
     private static final String TOOLBAR_SEARCH_ICON_METADATA_NAME =
@@ -273,7 +287,6 @@ public class Launcher extends Activity
     private DragLayer mDragLayer;
     private DragController mDragController;
     private View mWeightWatcher;
-    private TransitionEffectsFragment mTransitionEffectsFragment;
     private DynamicGridSizeFragment mDynamicGridSizeFragment;
     private LauncherClings mLauncherClings;
     protected HiddenFolderFragment mHiddenFolderFragment;
@@ -298,6 +311,9 @@ public class Launcher extends Activity
     OverviewSettingsPanel mOverviewSettingsPanel;
 
     private View mAllAppsButton;
+    protected RecyclerView mAppDrawer;
+    private AppDrawerListAdapter mAppDrawerAdapter;
+    private AppDrawerScrubber mScrubber;
 
     protected SearchDropTargetBar mSearchDropTargetBar;
     private AppsCustomizeTabHost mAppsCustomizeTabHost;
@@ -335,6 +351,8 @@ public class Launcher extends Activity
     private boolean mVisible = false;
     private boolean mHasFocus = false;
     private boolean mAttached = false;
+
+    private boolean mShouldShowVoice = false;
 
     private static LocaleConfiguration sLocaleConfiguration = null;
 
@@ -386,8 +404,14 @@ public class Launcher extends Activity
 
     private BubbleTextView mWaitingForResume;
 
+    // Search widget
+    int mSearchWidgetId;
+    AppWidgetProviderInfo mSearchWidgetInfo;
+    AppWidgetHostView mSearchViewHost;
+
     // Preferences
     private boolean mHideIconLabels;
+    private AppDrawerListAdapter.DrawerType mDrawerType;
 
     private Runnable mBuildLayersRunnable = new Runnable() {
         public void run() {
@@ -411,7 +435,7 @@ public class Launcher extends Activity
         int appWidgetId;
     }
 
-    private Stats mStats;
+    private static Stats sStats;
 
     FocusIndicatorView mFocusHandler;
 
@@ -470,7 +494,8 @@ public class Launcher extends Activity
 
         super.onCreate(savedInstanceState);
 
-        initializeDynamicGrid();
+        initializeDynamicGrid(false);
+        setUpBlurAppPage();
         mHideIconLabels = SettingsProvider.getBoolean(this,
                 SettingsProvider.SETTINGS_UI_HOMESCREEN_HIDE_ICON_LABELS,
                 R.bool.preferences_interface_homescreen_hide_icon_labels_default);
@@ -482,7 +507,7 @@ public class Launcher extends Activity
         mDragController = new DragController(this);
         mInflater = getLayoutInflater();
 
-        mStats = new Stats(this);
+        sStats = new Stats(this);
 
         mAppWidgetManager = AppWidgetManagerCompat.getInstance(this);
 
@@ -555,13 +580,19 @@ public class Launcher extends Activity
     @Override
     public void onLauncherProviderChange() { }
 
-    private void initializeDynamicGrid() {
-        LauncherAppState.setApplicationContext(getApplicationContext());
+    private void initializeDynamicGrid(boolean updateGrid) {
+        if (!updateGrid) {
+            LauncherAppState.setApplicationContext(getApplicationContext());
+        }
         LauncherAppState app = LauncherAppState.getInstance();
 
         mHideIconLabels = SettingsProvider.getBoolean(this,
                 SettingsProvider.SETTINGS_UI_HOMESCREEN_HIDE_ICON_LABELS,
                 R.bool.preferences_interface_homescreen_hide_icon_labels_default);
+        mDrawerType = AppDrawerListAdapter.DrawerType.getModeForValue(
+                SettingsProvider.getInt(this,
+                        SettingsProvider.SETTINGS_UI_DRAWER_TYPE,
+                        R.integer.preferences_interface_drawer_type_default));
 
         // Determine the dynamic grid properties
         Point smallestSize = new Point();
@@ -597,6 +628,24 @@ public class Launcher extends Activity
     protected void populateCustomContentContainer() {
     }
 
+    private void initializeScrubber() {
+        if (mScrubber == null) {
+            FrameLayout view = (FrameLayout) findViewById(R.id.app_drawer_container);
+            mScrubber = (AppDrawerScrubber) view.findViewById(R.id.app_drawer_scrubber);
+            mScrubber.setSource(mAppDrawer);
+            mScrubber.setScrubberIndicator((TextView) view.findViewById(R.id.scrubberIndicator));
+        }
+    }
+
+    public void updateScrubber() {
+        mScrubber.updateSections();
+    }
+
+    public void initializeAdapter() {
+        mAppDrawerAdapter = new AppDrawerListAdapter(this);
+        mAppDrawerAdapter.notifyDataSetChanged();
+    }
+
     /**
      * Invoked by subclasses to signal a change to the {@link #addCustomContentToLeft} value to
      * ensure the custom content page is added or removed if necessary.
@@ -619,19 +668,25 @@ public class Launcher extends Activity
     private void updateGlobalIcons() {
         boolean searchVisible = false;
         boolean voiceVisible = false;
-        // If we have a saved version of these external icons, we load them up immediately
-        int coi = getCurrentOrientationIndexForGlobalIcons();
-        if (sGlobalSearchIcon[coi] == null || sVoiceSearchIcon[coi] == null) {
-            searchVisible = updateGlobalSearchIcon();
-            voiceVisible = updateVoiceSearchIcon(searchVisible);
-        }
-        if (sGlobalSearchIcon[coi] != null) {
-             updateGlobalSearchIcon(sGlobalSearchIcon[coi]);
-             searchVisible = true;
-        }
-        if (sVoiceSearchIcon[coi] != null) {
-            updateVoiceSearchIcon(sVoiceSearchIcon[coi]);
-            voiceVisible = true;
+        if (mSearchWidgetId >= 0) {
+            // we're displaying a search widget
+            searchVisible = true;
+            voiceVisible = false;
+        } else {
+            // If we have a saved version of these external icons, we load them up immediately
+            int coi = getCurrentOrientationIndexForGlobalIcons();
+            if (sGlobalSearchIcon[coi] == null || sVoiceSearchIcon[coi] == null) {
+                searchVisible = updateGlobalSearchIcon();
+                voiceVisible = updateVoiceSearchIcon(searchVisible);
+            }
+            if (sGlobalSearchIcon[coi] != null) {
+                updateGlobalSearchIcon(sGlobalSearchIcon[coi]);
+                searchVisible = true;
+            }
+            if (sVoiceSearchIcon[coi] != null) {
+                updateVoiceSearchIcon(sVoiceSearchIcon[coi]);
+                voiceVisible = true;
+            }
         }
         if (mSearchDropTargetBar != null) {
             mSearchDropTargetBar.onSearchPackagesChanged(searchVisible, voiceVisible);
@@ -739,8 +794,8 @@ public class Launcher extends Activity
         }
     }
 
-    public Stats getStats() {
-        return mStats;
+    public static Stats getStats() {
+        return sStats;
     }
 
     public LayoutInflater getInflater() {
@@ -923,14 +978,9 @@ public class Launcher extends Activity
                     final CellLayout dropLayout = mWorkspace.getScreenWithId(mPendingAddInfo.screenId);
 
                     dropLayout.setDropPending(true);
-                    final Runnable onComplete = new Runnable() {
-                        @Override
-                        public void run() {
-                            completeTwoStageWidgetDrop(resultCode, appWidgetId);
-                            dropLayout.setDropPending(false);
-                        }
-                    };
-                    mWorkspace.removeExtraEmptyScreenDelayed(true, onComplete,
+                    completeTwoStageWidgetDrop(resultCode, appWidgetId);
+                    dropLayout.setDropPending(false);
+                    mWorkspace.removeExtraEmptyScreenDelayed(true, null,
                             ON_ACTIVITY_RESULT_ANIMATION_DELAY, false);
                 } else {
                     PendingAddArguments args = preparePendingAddArgs(requestCode, data, appWidgetId,
@@ -1154,12 +1204,13 @@ public class Launcher extends Activity
         PackageInstallerCompat.getInstance(this).onResume();
 
         //Close out Fragments
-        Fragment f = getFragmentManager().findFragmentByTag(
-                TransitionEffectsFragment.TRANSITION_EFFECTS_FRAGMENT);
-        if (f != null) {
-            mTransitionEffectsFragment.setEffect();
+        TransitionEffectsFragment tef =
+                (TransitionEffectsFragment)getFragmentManager().findFragmentByTag(
+                        TransitionEffectsFragment.TRANSITION_EFFECTS_FRAGMENT);
+        if (tef != null) {
+            tef.setEffect();
         }
-        f = getFragmentManager().findFragmentByTag(
+        Fragment f = getFragmentManager().findFragmentByTag(
                 DynamicGridSizeFragment.DYNAMIC_GRID_SIZE_FRAGMENT);
         if (f != null) {
             mDynamicGridSizeFragment.setSize();
@@ -1177,6 +1228,12 @@ public class Launcher extends Activity
         }
 
         updateGridIfNeeded();
+
+        // Notify that Home or Idle Screen is being started or resumed
+        Intent idleScreenIntent = new Intent(AppInterface.CAT_IDLE_SCREEN_ACTION);
+        idleScreenIntent.putExtra("SCREEN_IDLE", true);
+        Log.d(TAG,"Broadcasting Home Idle Screen Intent ...");
+        sendBroadcast(idleScreenIntent);
     }
 
     @Override
@@ -1237,6 +1294,17 @@ public class Launcher extends Activity
         return false;
     }
 
+    public void updateDrawerType() {
+        mDrawerType = AppDrawerListAdapter.DrawerType.getModeForValue(
+                SettingsProvider.getInt(this,
+                        SettingsProvider.SETTINGS_UI_DRAWER_TYPE,
+                        R.integer.preferences_interface_drawer_type_default));
+    }
+
+    public AppDrawerListAdapter.DrawerType getDrawerType() {
+        return mDrawerType;
+    }
+
     public void onClickSortModeButton(View v) {
         final PopupMenu popupMenu = new PopupMenu(this, v);
         final Menu menu = popupMenu.getMenu();
@@ -1287,7 +1355,18 @@ public class Launcher extends Activity
     public void setDynamicGridSize(DeviceProfile.GridSize size) {
         int gridSize = SettingsProvider.getIntCustomDefault(this,
                 SettingsProvider.SETTINGS_UI_DYNAMIC_GRID_SIZE, 0);
-        if (gridSize != size.getValue()) {
+        boolean customValuesChanged = false;
+        if (gridSize == size.getValue() && size == DeviceProfile.GridSize.Custom) {
+            int tempRows = SettingsProvider.getIntCustomDefault(this,
+                    SettingsProvider.SETTINGS_UI_HOMESCREEN_ROWS, (int)mGrid.numRows);
+            int tempColumns = SettingsProvider.getIntCustomDefault(this,
+                    SettingsProvider.SETTINGS_UI_HOMESCREEN_COLUMNS, (int)mGrid.numColumns);
+            if (tempColumns != (int) mGrid.numColumns || tempRows != (int) mGrid.numRows) {
+                customValuesChanged = true;
+            }
+        }
+
+        if (gridSize != size.getValue() || customValuesChanged) {
             SettingsProvider.putInt(this,
                     SettingsProvider.SETTINGS_UI_DYNAMIC_GRID_SIZE, size.getValue());
 
@@ -1323,10 +1402,10 @@ public class Launcher extends Activity
         FragmentManager fragmentManager = getFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
 
-        mTransitionEffectsFragment = new TransitionEffectsFragment();
-        mTransitionEffectsFragment.setArguments(bundle);
+        TransitionEffectsFragment tef = new TransitionEffectsFragment();
+        tef.setArguments(bundle);
         fragmentTransaction.setCustomAnimations(0, 0);
-        fragmentTransaction.replace(R.id.launcher, mTransitionEffectsFragment,
+        fragmentTransaction.replace(R.id.launcher, tef,
                 TransitionEffectsFragment.TRANSITION_EFFECTS_FRAGMENT);
         fragmentTransaction.commit();
     }
@@ -1355,8 +1434,10 @@ public class Launcher extends Activity
             fragmentTransaction
                     .setCustomAnimations(0, R.anim.exit_out_right);
         }
+        Fragment f = getFragmentManager().findFragmentByTag(
+                TransitionEffectsFragment.TRANSITION_EFFECTS_FRAGMENT);
         fragmentTransaction
-                .remove(mTransitionEffectsFragment).commit();
+                .remove(f).commit();
 
         mDarkPanel.setVisibility(View.VISIBLE);
         ObjectAnimator anim = ObjectAnimator.ofFloat(
@@ -1421,6 +1502,15 @@ public class Launcher extends Activity
         Intent settings;
         settings = new Intent(android.provider.Settings.ACTION_SETTINGS);
         startActivity(settings);
+        if (mWorkspace.isInOverviewMode()) {
+            mWorkspace.exitOverviewMode(false);
+        }
+    }
+
+    protected void startManageApps() {
+        Intent manageApps;
+        manageApps= new Intent(ACTION_MANAGE_APPS);
+        startActivity(manageApps);
         if (mWorkspace.isInOverviewMode()) {
             mWorkspace.exitOverviewMode(false);
         }
@@ -1597,6 +1687,9 @@ public class Launcher extends Activity
         mLauncherView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         mWorkspaceBackgroundDrawable = getResources().getDrawable(R.drawable.workspace_bg);
+        if (ALLAPPS_BLUR_ENABLED) {
+            mWorkspaceBackgroundDrawable.setAlpha((int) (0.6 * 255));
+        }
 
         // Setup the drag layer
         mDragLayer.setup(this, dragController);
@@ -1631,6 +1724,9 @@ public class Launcher extends Activity
                 mAppsCustomizeTabHost.findViewById(R.id.apps_customize_pane_content);
         mAppsCustomizeContent.setup(this, dragController);
 
+        // Setup AppDrawer
+        setupAppDrawer();
+
         // Setup the drag controller (drop targets have to be added in reverse order in priority)
         dragController.setDragScoller(mWorkspace);
         dragController.setScrollView(mDragLayer);
@@ -1653,6 +1749,20 @@ public class Launcher extends Activity
 
             boolean show = shouldShowWeightWatcher();
             mWeightWatcher.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void setupAppDrawer() {
+        if (mAppDrawer == null) {
+            FrameLayout view = (FrameLayout) findViewById(R.id.app_drawer_container);
+            mAppDrawer = (RecyclerView) view.findViewById(R.id.app_drawer_recyclerview);
+            mAppDrawer.setLayoutManager(new LinearLayoutManager(this));
+            if (mAppDrawerAdapter == null) {
+                initializeAdapter();
+            }
+            mAppDrawer.setHasFixedSize(true);
+            mAppDrawer.setAdapter(mAppDrawerAdapter);
+            initializeScrubber();
         }
     }
 
@@ -2190,11 +2300,6 @@ public class Launcher extends Activity
                 imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
             }
 
-            // Reset the apps customize page
-            if (!alreadyOnHome && mAppsCustomizeTabHost != null) {
-                mAppsCustomizeTabHost.reset();
-            }
-
             onHomeIntent();
         }
 
@@ -2526,6 +2631,30 @@ public class Launcher extends Activity
         }
     }
 
+    /**
+     * This is used when starting widget config activities. Make sure to setWaitingForResult so that
+     * the ItemInfo for the pending item is properly saved.
+     *
+     * @param intent
+     * @param requestCode
+     * @param fillInIntent
+     * @param flagsMask
+     * @param flagsValues
+     * @param extraFlags
+     * @param options
+     * @throws IntentSender.SendIntentException
+     */
+    @Override
+    public void startIntentSenderForResult(IntentSender intent, int requestCode,
+        Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags, Bundle options)
+            throws IntentSender.SendIntentException {
+        if (requestCode >= 0) {
+            setWaitingForResult(true);
+        }
+        super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues,
+                extraFlags, options);
+    }
+
     protected void moveToCustomContentScreen(boolean animate) {
         // Close any folders that may be open.
         closeFolder();
@@ -2704,15 +2833,24 @@ public class Launcher extends Activity
                 showOverviewMode(true);
             }
         } else if (mWorkspace.isInOverviewMode()) {
-            Fragment f = getFragmentManager().findFragmentByTag(
-                    TransitionEffectsFragment.TRANSITION_EFFECTS_FRAGMENT);
+            TransitionEffectsFragment tef =
+                    (TransitionEffectsFragment)getFragmentManager().findFragmentByTag(
+                            TransitionEffectsFragment.TRANSITION_EFFECTS_FRAGMENT);
             Fragment f2 = getFragmentManager().findFragmentByTag(
                     DynamicGridSizeFragment.DYNAMIC_GRID_SIZE_FRAGMENT);
-            if (f != null) {
-                mTransitionEffectsFragment.setEffect();
+            if (tef != null) {
+                tef.setEffect();
             } else if (f2 != null) {
                 mDynamicGridSizeFragment.setSize();
             } else {
+                // if a user backs up twice very quickly from the widget add screen to the
+                // homescreen, the UI can get into a messed up state and mStateAnimation never
+                // completes or gets cancelled. Cancelling mStateAnimation here fixes this bug
+                if (mStateAnimation != null && mStateAnimation.isRunning()) {
+                    mStateAnimation.cancel();
+                    mStateAnimation = null;
+                }
+
                 mWorkspace.exitOverviewMode(true);
             }
         } else if (mWorkspace.getOpenFolder() != null) {
@@ -2951,11 +3089,15 @@ public class Launcher extends Activity
         final Intent intent;
         if (tag instanceof ShortcutInfo) {
             shortcut = (ShortcutInfo) tag;
+            if (shortcut.isDisabled) {
+                Toast.makeText(this, R.string.app_not_available, Toast.LENGTH_SHORT).show();
+                return;
+            }
             intent = shortcut.intent;
             int[] pos = new int[2];
             v.getLocationOnScreen(pos);
-            intent.setSourceBounds(new Rect(pos[0], pos[1],
-                    pos[0] + v.getWidth(), pos[1] + v.getHeight()));
+            intent.setSourceBounds(
+                    new Rect(pos[0], pos[1], pos[0] + v.getWidth(), pos[1] + v.getHeight()));
 
         } else if (tag instanceof AppInfo) {
             shortcut = null;
@@ -2984,7 +3126,22 @@ public class Launcher extends Activity
         }
 
         boolean success = startActivitySafely(v, intent, tag);
-        mStats.recordLaunch(intent, shortcut);
+        if (success) {
+            if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+                // if we downloaded app for first time remove download badge
+                // and update sort order.
+                if (mModel.getDownloadedAppLaunchType(getApplicationContext(), intent)
+                         == LauncherModel.LAUNCHED_NEVER) {
+                    // update after checking original launch count
+                    sStats.recordLaunch(intent, shortcut);
+                    mModel.updateDownloadedAppIcon(intent.getComponent());
+                } else {
+                    sStats.recordLaunch(intent, shortcut);
+                }
+            } else {
+                sStats.recordLaunch(intent, shortcut);
+            }
+        }
 
         if (success && v instanceof BubbleTextView) {
             mWaitingForResume = (BubbleTextView) v;
@@ -3191,7 +3348,7 @@ public class Launcher extends Activity
         return false;
     }
 
-    boolean startActivitySafely(View v, Intent intent, Object tag) {
+    public boolean startActivitySafely(View v, Intent intent, Object tag) {
         boolean success = false;
         if (mIsSafeModeEnabled && !Utilities.isSystemApp(this, intent)) {
             Toast.makeText(this, R.string.safemode_shortcut_error, Toast.LENGTH_SHORT).show();
@@ -3480,6 +3637,17 @@ public class Launcher extends Activity
         setWorkspaceBackground(visible);
     }
 
+    void setBehindWindowDim(boolean setdim) {
+        if (setdim) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            getWindow().setDimAmount(
+                    getResources().getInteger(R.integer.wallpaper_dim_amount_percentage) / 100f);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            getWindow().setDimAmount(0f);
+        }
+    }
+
     private void dispatchOnLauncherTransitionPrepare(View v, boolean animated, boolean toWorkspace) {
         if (v instanceof LauncherTransitionable) {
             ((LauncherTransitionable) v).onLauncherTransitionPrepare(this, animated, toWorkspace);
@@ -3569,7 +3737,7 @@ public class Launcher extends Activity
         }
 
         boolean material = Utilities.isLmpOrAbove();
-
+        boolean drawer = mDrawerType == AppDrawerListAdapter.DrawerType.Drawer;
         final Resources res = getResources();
 
         final int duration = res.getInteger(R.integer.config_appsCustomizeZoomInTime);
@@ -3580,7 +3748,13 @@ public class Launcher extends Activity
 
         final float scale = (float) res.getInteger(R.integer.config_appsCustomizeZoomScaleFactor);
         final View fromView = mWorkspace;
-        final AppsCustomizeTabHost toView = mAppsCustomizeTabHost;
+        final View toView;
+
+        if (drawer && contentType == AppsCustomizePagedView.ContentType.Applications) {
+            toView = findViewById(R.id.app_drawer_container);
+        } else {
+            toView = mAppsCustomizeTabHost;
+        }
 
         final ArrayList<View> layerViews = new ArrayList<View>();
 
@@ -3602,7 +3776,8 @@ public class Launcher extends Activity
             final AppsCustomizePagedView content = (AppsCustomizePagedView)
                     toView.findViewById(R.id.apps_customize_pane_content);
 
-            final View page = content.getPageAt(content.getCurrentPage());
+            final View page = content != null ? content.getPageAt(content.getCurrentPage())
+                    : toView.findViewById(R.id.app_drawer_view);
             final View revealView = toView.findViewById(R.id.fake_page);
 
             final float initialPanelAlpha = 1f;
@@ -3611,11 +3786,26 @@ public class Launcher extends Activity
             if (isWidgetTray) {
                 revealView.setBackground(res.getDrawable(R.drawable.quantum_panel_dark));
             } else {
-                revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                if (drawer) {
+                    revealView.setBackgroundColor(res.getColor(R.color.app_drawer_background));
+                } else {
+                    revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    if (ALLAPPS_BLUR_ENABLED) {
+                        Drawable d = res.getDrawable(R.drawable.quantum_panel);
+                        d.setAlpha(AppsCustomizePagedView.ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA);
+                        revealView.setBackground(d);
+                    } else {
+                        revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    }
+                }
             }
 
             // Hide the real page background, and swap in the fake one
-            content.setPageBackgroundsVisible(false);
+            if (content != null) {
+                content.setPageBackgroundsVisible(false);
+            } else {
+                toView.setBackgroundColor(Color.TRANSPARENT);
+            }
             revealView.setVisibility(View.VISIBLE);
             // We need to hide this view as the animation start will be posted.
             revealView.setAlpha(0);
@@ -3660,6 +3850,11 @@ public class Launcher extends Activity
 
             mStateAnimation.play(panelAlphaAndDrift);
 
+            final View drawerContent = content == null ?
+                    toView.findViewById(R.id.app_drawer_recyclerview) : null;
+            final View drawerScrubber = content == null ?
+                    toView.findViewById(R.id.scrubber_container) : null;
+
             if (page != null) {
                 page.setVisibility(View.VISIBLE);
                 page.setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -3678,14 +3873,32 @@ public class Launcher extends Activity
                 itemsAlpha.setInterpolator(new AccelerateInterpolator(1.5f));
                 itemsAlpha.setStartDelay(itemsAlphaStagger);
                 mStateAnimation.play(itemsAlpha);
+
+                if (drawerContent != null) {
+                    drawerContent.setTranslationY(toView.getHeight());
+                    ObjectAnimator slideIn = ObjectAnimator.ofFloat(drawerContent,
+                            "translationY", 1000, 0);
+                    slideIn.setInterpolator(new OvershootInterpolator(OVERSHOOT_TENSION));
+                    slideIn.setStartDelay(revealDuration / 2);
+                    mStateAnimation.play(slideIn);
+                }
+                if (drawerScrubber != null) {
+                    drawerScrubber.setAlpha(0f);
+                    ObjectAnimator fadeIn = ObjectAnimator.ofFloat(drawerScrubber,
+                            "alpha", 0f, 1f);
+                    fadeIn.setStartDelay(revealDuration / 2);
+                    mStateAnimation.play(fadeIn);
+                }
             }
 
             View pageIndicators = toView.findViewById(R.id.apps_customize_page_indicator);
-            pageIndicators.setAlpha(0.01f);
-            ObjectAnimator indicatorsAlpha =
-                    ObjectAnimator.ofFloat(pageIndicators, "alpha", 1f);
-            indicatorsAlpha.setDuration(revealDuration);
-            mStateAnimation.play(indicatorsAlpha);
+            if (pageIndicators != null) {
+                pageIndicators.setAlpha(0.01f);
+                ObjectAnimator indicatorsAlpha =
+                        ObjectAnimator.ofFloat(pageIndicators, "alpha", 1f);
+                indicatorsAlpha.setDuration(revealDuration);
+                mStateAnimation.play(indicatorsAlpha);
+            }
 
             if (material) {
                 final View allApps = getAllAppsButton();
@@ -3723,7 +3936,11 @@ public class Launcher extends Activity
                     if (page != null) {
                         page.setLayerType(View.LAYER_TYPE_NONE, null);
                     }
-                    content.setPageBackgroundsVisible(true);
+                    if (content != null) {
+                        content.setPageBackgroundsVisible(true);
+                    } else {
+                        toView.setBackgroundColor(res.getColor(R.color.app_drawer_background));
+                    }
 
                     // Hide the search bar
                     if (mSearchDropTargetBar != null) {
@@ -3789,6 +4006,9 @@ public class Launcher extends Activity
             dispatchOnLauncherTransitionStart(toView, animated, false);
             dispatchOnLauncherTransitionEnd(toView, animated, false);
         }
+        if (ALLAPPS_BLUR_ENABLED) {
+            setupAllappsBlur(true);
+        }
     }
 
     /**
@@ -3806,7 +4026,8 @@ public class Launcher extends Activity
         }
 
         boolean material = Utilities.isLmpOrAbove();
-        Resources res = getResources();
+        boolean drawer = mDrawerType == AppDrawerListAdapter.DrawerType.Drawer;
+        final Resources res = getResources();
 
         final int duration = res.getInteger(R.integer.config_appsCustomizeZoomOutTime);
         final int fadeOutDuration = res.getInteger(R.integer.config_appsCustomizeFadeOutTime);
@@ -3816,7 +4037,15 @@ public class Launcher extends Activity
 
         final float scaleFactor = (float)
                 res.getInteger(R.integer.config_appsCustomizeZoomScaleFactor);
-        final View fromView = mAppsCustomizeTabHost;
+        final View fromView;
+
+        if (drawer && mAppsCustomizeContent.getContentType()
+                != AppsCustomizePagedView.ContentType.Widgets) {
+            fromView = (FrameLayout) findViewById(R.id.app_drawer_container);
+        } else {
+            fromView = mAppsCustomizeTabHost;
+        }
+
         final View toView = mWorkspace;
         Animator workspaceAnim = null;
         final ArrayList<View> layerViews = new ArrayList<View>();
@@ -3842,10 +4071,11 @@ public class Launcher extends Activity
             final AppsCustomizePagedView content = (AppsCustomizePagedView)
                     fromView.findViewById(R.id.apps_customize_pane_content);
 
-            final View page = content.getPageAt(content.getNextPage());
+            final View page = content != null ? content.getPageAt(content.getNextPage())
+                    : fromView.findViewById(R.id.app_drawer_view);
 
             // We need to hide side pages of the Apps / Widget tray to avoid some ugly edge cases
-            int count = content.getChildCount();
+            int count = content != null ? content.getChildCount() : 0;
             for (int i = 0; i < count; i++) {
                 View child = content.getChildAt(i);
                 if (child != page) {
@@ -3858,14 +4088,26 @@ public class Launcher extends Activity
             // don't perform all these no-op animations. In particularly, this was causing
             // the all-apps button to pop in and out.
             if (fromView.getVisibility() == View.VISIBLE) {
-                AppsCustomizePagedView.ContentType contentType = content.getContentType();
+                AppsCustomizePagedView.ContentType contentType =
+                        mAppsCustomizeContent.getContentType();
                 final boolean isWidgetTray =
                         contentType == AppsCustomizePagedView.ContentType.Widgets;
 
                 if (isWidgetTray) {
                     revealView.setBackground(res.getDrawable(R.drawable.quantum_panel_dark));
                 } else {
-                    revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                    if (drawer) {
+                        revealView.setBackgroundColor(res.getColor(
+                                R.color.app_drawer_background));
+                    } else {
+                        if (ALLAPPS_BLUR_ENABLED) {
+                            Drawable d = res.getDrawable(R.drawable.quantum_panel);
+                            d.setAlpha(AppsCustomizePagedView.ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA);
+                            revealView.setBackground(d);
+                        } else {
+                            revealView.setBackground(res.getDrawable(R.drawable.quantum_panel));
+                        }
+                    }
                 }
 
                 int width = revealView.getMeasuredWidth();
@@ -3874,7 +4116,11 @@ public class Launcher extends Activity
 
                 // Hide the real page background, and swap in the fake one
                 revealView.setVisibility(View.VISIBLE);
-                content.setPageBackgroundsVisible(false);
+                if (content != null) {
+                    content.setPageBackgroundsVisible(false);
+                } else {
+                    fromView.setBackgroundColor(Color.TRANSPARENT);
+                }
 
                 final View allAppsButton = getAllAppsButton();
                 revealView.setTranslationY(0);
@@ -3924,6 +4170,9 @@ public class Launcher extends Activity
                     mStateAnimation.play(panelAlpha);
                 }
 
+                final View drawerScrubber = content == null ?
+                        fromView.findViewById(R.id.scrubber_container) : null;
+
                 if (page != null) {
                     page.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
@@ -3940,15 +4189,24 @@ public class Launcher extends Activity
                     itemsAlpha.setDuration(100);
                     itemsAlpha.setInterpolator(decelerateInterpolator);
                     mStateAnimation.play(itemsAlpha);
+
+                    if (drawerScrubber != null) {
+                        drawerScrubber.setAlpha(1f);
+                        ObjectAnimator fadeOut = ObjectAnimator.ofFloat(drawerScrubber,
+                                "alpha", 1f, 0f);
+                        mStateAnimation.play(fadeOut);
+                    }
                 }
 
                 View pageIndicators = fromView.findViewById(R.id.apps_customize_page_indicator);
-                pageIndicators.setAlpha(1f);
-                ObjectAnimator indicatorsAlpha =
-                        LauncherAnimUtils.ofFloat(pageIndicators, "alpha", 0f);
-                indicatorsAlpha.setDuration(revealDuration);
-                indicatorsAlpha.setInterpolator(new DecelerateInterpolator(1.5f));
-                mStateAnimation.play(indicatorsAlpha);
+                if (pageIndicators != null) {
+                    pageIndicators.setAlpha(1f);
+                    ObjectAnimator indicatorsAlpha =
+                            LauncherAnimUtils.ofFloat(pageIndicators, "alpha", 0f);
+                    indicatorsAlpha.setDuration(revealDuration);
+                    indicatorsAlpha.setInterpolator(new DecelerateInterpolator(1.5f));
+                    mStateAnimation.play(indicatorsAlpha);
+                }
 
                 width = revealView.getMeasuredWidth();
 
@@ -3997,9 +4255,13 @@ public class Launcher extends Activity
                     if (page != null) {
                         page.setLayerType(View.LAYER_TYPE_NONE, null);
                     }
-                    content.setPageBackgroundsVisible(true);
+                    if (content != null) {
+                        content.setPageBackgroundsVisible(true);
+                    } else {
+                        fromView.setBackgroundColor(res.getColor(R.color.app_drawer_background));
+                    }
                     // Unhide side pages
-                    int count = content.getChildCount();
+                    int count = content != null ? content.getChildCount() : 0;
                     for (int i = 0; i < count; i++) {
                         View child = content.getChildAt(i);
                         child.setVisibility(View.VISIBLE);
@@ -4011,7 +4273,9 @@ public class Launcher extends Activity
                         page.setTranslationY(0);
                         page.setAlpha(1);
                     }
-                    content.setCurrentPage(content.getNextPage());
+                    if (content != null) {
+                        content.setCurrentPage(content.getNextPage());
+                    }
 
                     mAppsCustomizeContent.updateCurrentPageScroll();
                 }
@@ -4052,6 +4316,9 @@ public class Launcher extends Activity
             dispatchOnLauncherTransitionStart(toView, animated, true);
             dispatchOnLauncherTransitionEnd(toView, animated, true);
         }
+        if (ALLAPPS_BLUR_ENABLED) {
+            setupAllappsBlur(false);
+        }
     }
 
     @Override
@@ -4073,6 +4340,9 @@ public class Launcher extends Activity
     void showWorkspace(boolean animated, Runnable onCompleteRunnable) {
         if (mState != State.WORKSPACE || mWorkspace.getState() != Workspace.State.NORMAL) {
             boolean wasInSpringLoadedMode = (mState != State.WORKSPACE);
+            if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                setBehindWindowDim(false);
+            }
             mWorkspace.setVisibility(View.VISIBLE);
             hideAppsCustomizeHelper(Workspace.State.NORMAL, animated, false, onCompleteRunnable);
 
@@ -4116,11 +4386,18 @@ public class Launcher extends Activity
     void showAllApps(boolean animated, AppsCustomizePagedView.ContentType contentType,
                      boolean resetPageToZero) {
         if (mState != State.WORKSPACE) return;
+        if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+            setBehindWindowDim(true);
+        }
 
         if (resetPageToZero) {
             mAppsCustomizeTabHost.reset();
         }
-        mAppsCustomizeContent.sortApps();
+        if (mAppsCustomizeContent.getSortMode() != AppsCustomizePagedView.SortMode.Title) {
+            // optimize Title sort by not reinflating views every time we open the app drawer
+            // since we already sort based on new app installs and change of sort mode
+            mAppsCustomizeContent.sortApps();
+        }
         showAppsCustomizeHelper(animated, false, contentType);
         mAppsCustomizeTabHost.post(new Runnable() {
             @Override
@@ -4321,15 +4598,107 @@ public class Launcher extends Activity
         }
     }
 
+    /**
+     * Resolves and returns the first search widget from the same package as the global
+     * assist activity.
+     */
+    public AppWidgetProviderInfo resolveSearchAppWidget() {
+        if (mAppWidgetManager == null) return null;
+
+        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        final Intent assistIntent = searchManager.getAssistIntent(this, false);
+        if (assistIntent == null) {
+            return null;
+        }
+        ComponentName searchComponent = assistIntent.getComponent();
+
+        // Find the first widget from the same package as the global assist activity
+        List<AppWidgetProviderInfo> widgets = AppWidgetManager.getInstance(this)
+                .getInstalledProviders(AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN);
+        for (AppWidgetProviderInfo info : widgets) {
+            if (info.provider.getPackageName().equals(searchComponent.getPackageName())) {
+                return info;
+            }
+        }
+        return null;
+    }
+
+    public Pair<Integer, AppWidgetProviderInfo> bindSearchAppWidget(AppWidgetHost host) {
+        if (mAppWidgetManager == null) return null;
+
+        if (!mGrid.isPhone()) {
+            // tablets rotate and widget doesn't have a vertical layout
+            return null;
+        }
+
+        // Find the first widget from the same package as the global assist activity
+        AppWidgetProviderInfo searchWidgetInfo = resolveSearchAppWidget();
+
+        // Return early if there is no search widget
+        if (searchWidgetInfo == null) return null;
+
+        // Allocate a new widget id and try and bind the app widget (if that fails, then just skip)
+        int searchWidgetId = host.allocateAppWidgetId();
+        Bundle opts = new Bundle();
+        opts.putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY,
+                AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN);
+        if (!AppWidgetManager.getInstance(this).bindAppWidgetIdIfAllowed(searchWidgetId,
+                searchWidgetInfo.provider, opts)) {
+            host.deleteAppWidgetId(searchWidgetId);
+            return null;
+        }
+        return new Pair<Integer, AppWidgetProviderInfo>(searchWidgetId, searchWidgetInfo);
+    }
+
     public View getQsbBar() {
         if (mQsb == null) {
-            mQsb = mInflater.inflate(R.layout.qsb, mSearchDropTargetBar, false);
+            // bind search widget if possible
+            if (mSearchWidgetId >= 0) {
+                mSearchWidgetInfo
+                        = AppWidgetManager.getInstance(this).getAppWidgetInfo(mSearchWidgetId);
+                if (mSearchWidgetInfo == null) {
+                    mAppWidgetHost.deleteAppWidgetId(mSearchWidgetId);
+                    mSearchWidgetId = -1;
+                }
+            }
+
+            if (mSearchWidgetId < 0) {
+                final Pair<Integer, AppWidgetProviderInfo> newWidget
+                        = bindSearchAppWidget(mAppWidgetHost);
+                if (newWidget != null) {
+                    mSearchWidgetInfo = newWidget.second;
+                    mSearchWidgetId = newWidget.first;
+                } else {
+                    mSearchWidgetId = -1;
+                }
+            }
+
+            if (mSearchWidgetId < 0) {
+                // no widget, fall back to views
+                mQsb = mInflater.inflate(R.layout.qsb, mSearchDropTargetBar, false);
+            } else {
+                final AppWidgetHostView searchWidget
+                        = mAppWidgetHost.createView(this, mSearchWidgetId, mSearchWidgetInfo);
+                searchWidget.setAppWidget(mSearchWidgetId, mSearchWidgetInfo);
+                searchWidget.setPadding(0, 0, 0, 0);
+
+                Bundle opts = new Bundle();
+                opts.putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY,
+                        AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN);
+                searchWidget.updateAppWidgetOptions(opts);
+                searchWidget.setVisibility(View.VISIBLE);
+
+                mQsb = searchWidget;
+                mSearchViewHost = searchWidget;
+            }
+
             mSearchDropTargetBar.addView(mQsb);
         }
         return mQsb;
     }
 
     protected boolean updateGlobalSearchIcon() {
+        if (mSearchWidgetId >= 0) return false;
         final View searchButtonContainer = findViewById(R.id.search_button_container);
         final ImageView searchButton = (ImageView) findViewById(R.id.search_button);
         final View voiceButtonContainer = findViewById(R.id.voice_button_container);
@@ -4338,7 +4707,7 @@ public class Launcher extends Activity
         final SearchManager searchManager =
                 (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         ComponentName activityName = searchManager.getGlobalSearchActivity();
-        if (activityName != null && mWorkspace.shouldVoiceButtonProxyBeVisible()) {
+        if (activityName != null) {
             int coi = getCurrentOrientationIndexForGlobalIcons();
             sGlobalSearchIcon[coi] = updateButtonWithIconFromExternalActivity(
                     R.id.search_button, activityName, R.drawable.ic_home_search_normal_holo,
@@ -4359,12 +4728,14 @@ public class Launcher extends Activity
             if (voiceButtonContainer != null) voiceButtonContainer.setVisibility(View.GONE);
             if (searchButton != null) searchButton.setVisibility(View.GONE);
             if (voiceButton != null) voiceButton.setVisibility(View.GONE);
-            updateVoiceButtonProxyVisible(false);
+            mShouldShowVoice = false;
+            updateVoiceButtonProxyVisible(true);
             return false;
         }
     }
 
     protected void updateGlobalSearchIcon(Drawable.ConstantState d) {
+        if (mSearchWidgetId >= 0) return;
         final View searchButtonContainer = findViewById(R.id.search_button_container);
         final View searchButton = (ImageView) findViewById(R.id.search_button);
         updateButtonWithDrawable(R.id.search_button, d);
@@ -4372,6 +4743,7 @@ public class Launcher extends Activity
     }
 
     protected boolean updateVoiceSearchIcon(boolean searchVisible) {
+        if (mSearchWidgetId >= 0) return false;
         final View voiceButtonContainer = findViewById(R.id.voice_button_container);
         final View voiceButton = findViewById(R.id.voice_button);
 
@@ -4408,11 +4780,13 @@ public class Launcher extends Activity
             voiceButton.setVisibility(View.VISIBLE);
             updateVoiceButtonProxyVisible(false);
             invalidatePressedFocusedStates(voiceButtonContainer, voiceButton);
+            mShouldShowVoice = true;
             return true;
         } else {
             if (voiceButtonContainer != null) voiceButtonContainer.setVisibility(View.GONE);
             if (voiceButton != null) voiceButton.setVisibility(View.GONE);
-            updateVoiceButtonProxyVisible(false);
+            mShouldShowVoice = false;
+            updateVoiceButtonProxyVisible(true);
             return false;
         }
     }
@@ -4428,7 +4802,7 @@ public class Launcher extends Activity
         final View voiceButtonProxy = findViewById(R.id.voice_button_proxy);
         if (voiceButtonProxy != null) {
             boolean visible = !forceDisableVoiceButtonProxy &&
-                    mWorkspace.shouldVoiceButtonProxyBeVisible();
+                    mWorkspace.shouldVoiceButtonProxyBeVisible() && mShouldShowVoice;
             voiceButtonProxy.setVisibility(visible ? View.VISIBLE : View.GONE);
             voiceButtonProxy.bringToFront();
         }
@@ -4662,6 +5036,7 @@ public class Launcher extends Activity
         if (!LauncherAppState.isDisableAllApps() &&
                 addedApps != null && mAppsCustomizeContent != null) {
             mAppsCustomizeContent.addApps(addedApps);
+            mAppDrawerAdapter.addApps(addedApps);
         }
     }
 
@@ -4970,6 +5345,10 @@ public class Launcher extends Activity
         PackageInstallerCompat.getInstance(this).onFinishBind();
         mModel.recheckRestoredItems(this);
         mWorkspace.stripEmptyScreens();
+        if (mWorkspace.isInOverviewMode()) {
+            mWorkspace.resetOverviewMode();
+        }
+        mModel.updateCount();
     }
 
     private void sendLoadingCompleteBroadcastIfNecessary() {
@@ -5045,6 +5424,9 @@ public class Launcher extends Activity
                         LauncherModel.getSortedWidgetsAndShortcuts(this));
             }
         } else {
+            if (mAppDrawerAdapter != null) {
+                mAppDrawerAdapter.setApps(apps);
+            }
             if (mAppsCustomizeContent != null) {
                 mAppsCustomizeContent.setApps(apps);
                 mAppsCustomizeContent.onPackagesUpdated(
@@ -5075,6 +5457,7 @@ public class Launcher extends Activity
         if (!LauncherAppState.isDisableAllApps() &&
                 mAppsCustomizeContent != null) {
             mAppsCustomizeContent.updateApps(apps);
+            mAppDrawerAdapter.updateApps(apps);
         }
     }
 
@@ -5154,6 +5537,57 @@ public class Launcher extends Activity
         if (!LauncherAppState.isDisableAllApps() &&
                 mAppsCustomizeContent != null) {
             mAppsCustomizeContent.removeApps(appInfos);
+            mAppDrawerAdapter.removeApps(appInfos);
+        }
+
+        // reset launch counts
+        if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+            for (AppInfo info : appInfos) {
+                if (!Utilities.isSystemApp(getApplicationContext(), info.intent)) {
+                    sStats.recordLaunch(info.intent, null, true);
+                }
+            }
+        }
+
+        // reset launch counts
+        if (LauncherApplication.sConfigLauncherNewAppsBadge) {
+            for (AppInfo info : appInfos) {
+                if (!Utilities.isSystemApp(getApplicationContext(), info.intent)) {
+                    sStats.recordLaunch(info.intent, null, true);
+                }
+            }
+        }
+    }
+
+    /**
+     * A package has become unavailable.
+     *
+     * Implementation of the method from LauncherModel.Callbacks.
+     */
+    public void bindComponentsUnavailable(final ArrayList<String> packageNames,
+            final ArrayList<AppInfo> appInfos) {
+        if (!packageNames.isEmpty()) {
+            mWorkspace.updateUnavailableItemsByPackageName(packageNames);
+        }
+        // Notify the drag controller
+        mDragController.onAppsRemoved(packageNames, appInfos);
+
+        // Update AllApps
+        if (!LauncherAppState.isDisableAllApps() &&
+                mAppsCustomizeContent != null) {
+            mAppsCustomizeContent.removeApps(appInfos);
+            mAppDrawerAdapter.removeApps(appInfos);
+        }
+    }
+
+    /**
+     * A package has become unavailable.
+     *
+     * Implementation of the method from LauncherModel.Callbacks.
+     */
+    public void bindComponentsAvailable(final ArrayList<ItemInfo> itemInfos) {
+        if (!itemInfos.isEmpty()) {
+            mWorkspace.updateAvailableItems(itemInfos);
         }
     }
 
@@ -5411,14 +5845,22 @@ public class Launcher extends Activity
         if (mWorkspace != null) mWorkspace.setAlpha(1f);
         if (mHotseat != null) mHotseat.setAlpha(1f);
         if (mPageIndicators != null) mPageIndicators.setAlpha(1f);
-        if (mSearchDropTargetBar != null) mSearchDropTargetBar.showSearchBar(false);
+        showSearch();
     }
 
     void hideWorkspaceSearchAndHotseat() {
         if (mWorkspace != null) mWorkspace.setAlpha(0f);
         if (mHotseat != null) mHotseat.setAlpha(0f);
         if (mPageIndicators != null) mPageIndicators.setAlpha(0f);
+        hideSearch();
+    }
+
+    void hideSearch() {
         if (mSearchDropTargetBar != null) mSearchDropTargetBar.hideSearchBar(false);
+    }
+
+    void showSearch() {
+        if (mSearchDropTargetBar != null) mSearchDropTargetBar.showSearchBar(false);
     }
 
     public ItemInfo createAppDragInfo(Intent appLaunchIntent) {
@@ -5459,6 +5901,17 @@ public class Launcher extends Activity
 
     @Override
     public void onPageSwitch(View newPage, int newPageIndex) {
+    }
+
+    private void setupAllappsBlur(boolean showBlur) {
+        if (!ALLAPPS_BLUR_ENABLED) return;
+
+        if (showBlur) {
+            getWindow().setBlurMaskAlphaThreshold(0.2f); // draw blurred color only where our alpha > threshold
+            getWindow().addPrivateFlags(WindowManager.LayoutParams.PRIVATE_FLAG_BLUR_WITH_MASKING_SCALED);
+        } else {
+            getWindow().clearPrivateFlags(WindowManager.LayoutParams.PRIVATE_FLAG_BLUR_WITH_MASKING_SCALED);
+        }
     }
 
     /**
@@ -5604,18 +6057,32 @@ public class Launcher extends Activity
     public void updateDynamicGrid(int page) {
         mSearchDropTargetBar.setupQSB(Launcher.this);
 
-        initializeDynamicGrid();
+        initializeDynamicGrid(true);
 
         mGrid.layout(Launcher.this);
 
         // Synchronized reload
+        mModel.resetLoadedState(true, true);
         mModel.startLoader(true, page);
         mWorkspace.updateCustomContentVisibility();
 
+        mAppDrawerAdapter.reset();
     }
 
     public void setUpdateDynamicGrid() {
         mDynamicGridUpdateRequired = true;
+    }
+
+    public void setUpBlurAppPage() {
+       boolean current = SettingsProvider.getBoolean(
+                this, SettingsProvider.SETTINGS_UI_DRAWER_BLUR_BACKGROUND,
+                R.bool.preferences_interface_drawer_blur_background_default);
+
+        ALLAPPS_BLUR_ENABLED = current;
+    }
+
+    public boolean getBlurAppPage() {
+        return ALLAPPS_BLUR_ENABLED;
     }
 
     public boolean updateGridIfNeeded() {

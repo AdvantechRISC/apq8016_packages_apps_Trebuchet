@@ -290,6 +290,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
     private static final int CT_CUSTOMIZED_PAGE_COUNT = 2;
 
     private boolean mPreInstallConfig = false;
+    private int mFixedPages = 0;
     private ArrayList<String> mPreClassArray = new ArrayList<String> ();
     private ArrayList<String> mCTClassArray = new ArrayList<String> ();
     private ArrayList<String> mCTFirstPageArray = new ArrayList<String> ();
@@ -302,8 +303,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             = new Comparator<AppInfo>() {
 
         public final int compare(AppInfo a, AppInfo b) {
-            int indexA = mPreClassArray.indexOf(a.componentName.getClassName());
-            int indexB = mPreClassArray.indexOf(b.componentName.getClassName());
+            int indexA = getIndexOfComponent(mPreClassArray, a.componentName);
+            int indexB = getIndexOfComponent(mPreClassArray, b.componentName);
             return indexA < indexB ? -1 : 1;
         }
     };
@@ -312,8 +313,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             = new Comparator<AppInfo>() {
 
         public final int compare(AppInfo a, AppInfo b) {
-            int indexA = mCTClassArray.indexOf(a.componentName.getClassName());
-            int indexB = mCTClassArray.indexOf(b.componentName.getClassName());
+            int indexA = getIndexOfComponent(mCTClassArray, a.componentName);
+            int indexB = getIndexOfComponent(mCTClassArray, b.componentName);
             return indexA < indexB ? -1 : 1;
         }
     };
@@ -322,8 +323,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             = new Comparator<AppInfo>() {
 
         public final int compare(AppInfo a, AppInfo b) {
-            int indexA = mCTFirstPageArray.indexOf(a.componentName.getClassName());
-            int indexB = mCTFirstPageArray.indexOf(b.componentName.getClassName());
+            int indexA = getIndexOfComponent(mCTFirstPageArray, a.componentName);
+            int indexB = getIndexOfComponent(mCTFirstPageArray, b.componentName);
             return indexA < indexB ? -1 : 1;
         }
     };
@@ -364,7 +365,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
 
         configClassArray(context, mPreClassArray, PRE_CLASS_IDENTIFIER, true);
 
-        if (LauncherApplication.SHOW_CTAPP_FEATURE) {
+        if (LauncherApplication.SHOW_CTAPP_FEATURE
+                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
             configClassArray(context, mCTClassArray, CT_CLASS_IDENTIFIER, false);
             configClassArray(context, mCTFirstPageArray, CT_FIRSTPAGE_IDENTIFIER, false);
         }
@@ -468,18 +470,25 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 (float) (mWidgetCountX * mWidgetCountY));
         mNumAppsPages = (int) Math.ceil((float) mFilteredApps.size() / (mCellCountX * mCellCountY));
         if(LauncherApplication.SHOW_CTAPP_FEATURE){
-            mNumAppsPages = mNumAppsPages + 2; //for ct
+            mNumAppsPages = mNumAppsPages + CT_CUSTOMIZED_PAGE_COUNT; //for ct
+            mFixedPages = CT_CUSTOMIZED_PAGE_COUNT;
+        } else if (LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
+            // if second page array is 0 consider only first page as fixed
+            if (ctApps.size() <= 0) {
+                mNumAppsPages = mNumAppsPages + 1;
+                mFixedPages = 1;
+            } else {
+                mNumAppsPages = mNumAppsPages + 2;
+                mFixedPages = 2;
+            }
+
         }
     }
 
     protected void onDataReady(int width, int height) {
         // Now that the data is ready, we can calculate the content width, the number of cells to
         // use for each page
-        LauncherAppState app = LauncherAppState.getInstance();
-        DeviceProfile grid = app.getDynamicGrid().getDeviceProfile();
-        mCellCountX = (int) grid.allAppsNumCols;
-        mCellCountY = (int) grid.allAppsNumRows;
-        updatePageCounts();
+        updateGridSize();
 
         // Force a measure to update recalculate the gaps
         mContentWidth = getMeasuredWidth() - getPaddingLeft() - getPaddingRight();
@@ -491,6 +500,17 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         final boolean hostIsTransitioning = getTabHost().isInTransition();
         int page = getPageForComponent(mSaveInstanceStateItemIndex);
         invalidatePageData(Math.max(0, page), hostIsTransitioning);
+    }
+
+    public void updateGridSize() {
+        if (!isDataReady()) {
+            return;
+        }
+        LauncherAppState app = LauncherAppState.getInstance();
+        DeviceProfile grid = app.getDynamicGrid().getDeviceProfile();
+        mCellCountX = (int) grid.allAppsNumCols;
+        mCellCountY = (int) grid.allAppsNumRows;
+        updatePageCounts();
     }
 
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
@@ -1061,22 +1081,33 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         int heightSpec = MeasureSpec.makeMeasureSpec(mContentHeight, MeasureSpec.AT_MOST);
         layout.measure(widthSpec, heightSpec);
 
-        Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
-        if (bg != null) {
-            bg.setAlpha(mPageBackgroundsVisible ? 255: 0);
-            layout.setBackground(bg);
+        if (!LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+            Drawable bg = getContext().getResources().getDrawable(R.drawable.quantum_panel);
+            if (bg != null) {
+                if (mLauncher.getBlurAppPage()) {
+                    bg.setAlpha(mPageBackgroundsVisible ? ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA : 0);
+                } else {
+                    bg.setAlpha(mPageBackgroundsVisible ? 255 : 0);
+                }
+                layout.setBackground(bg);
+            }
         }
 
         setVisibilityOnChildren(layout, View.VISIBLE);
     }
 
+    public static final int ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA = (int) (0.5f * 255);
     public void setPageBackgroundsVisible(boolean visible) {
         mPageBackgroundsVisible = visible;
         int childCount = getChildCount();
         for (int i = 0; i < childCount; ++i) {
             Drawable bg = getChildAt(i).getBackground();
             if (bg != null) {
-                bg.setAlpha(visible ? 255 : 0);
+                if (mLauncher.getBlurAppPage()) {
+                    bg.setAlpha(visible ? ALLAPPS_ICON_PAGE_BACKGROUND_ALPHA : 0);
+                } else {
+                    bg.setAlpha(visible ? 255 : 0);
+                }
             }
         }
     }
@@ -1088,12 +1119,15 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         AppsCustomizeCellLayout layout = (AppsCustomizeCellLayout) getPageAt(page);
 
         //set page 1 & 2 to CT's app
-        boolean isCTFlag = LauncherApplication.SHOW_CTAPP_FEATURE
-                && (page < CT_CUSTOMIZED_PAGE_COUNT);
+        boolean isCTFlag = (LauncherApplication.SHOW_CTAPP_FEATURE
+                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2)
+                && (page < mFixedPages);
 
-        int startIndex = isCTFlag ? 0 : ((LauncherApplication.SHOW_CTAPP_FEATURE
-                && page >= CT_CUSTOMIZED_PAGE_COUNT) ? (page - CT_CUSTOMIZED_PAGE_COUNT) * numCells
-                : page * numCells);
+        int startIndex = isCTFlag ? 0
+                : (((LauncherApplication.SHOW_CTAPP_FEATURE
+                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2)
+                && page >= mFixedPages) ? (page - mFixedPages) * numCells
+                        : page * numCells);
 
         int ctEndIndex = (page == 0) ? Math.min(startIndex + numCells, ctFirstPageApps.size())
                 : Math.min(startIndex + numCells, ctApps.size());
@@ -1107,14 +1141,37 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         boolean hideIconLabels = SettingsProvider.getBoolean(mLauncher,
                 SettingsProvider.SETTINGS_UI_DRAWER_HIDE_ICON_LABELS,
                 R.bool.preferences_interface_drawer_hide_icon_labels_default);
+        boolean useLargeIcons = SettingsProvider.getBoolean(getContext(),
+                SettingsProvider.SETTINGS_UI_GENERAL_ICONS_LARGE,
+                R.bool.preferences_interface_general_icons_large_default);
+        boolean setMultiLineAllAppsIconLabel = getResources().getBoolean(
+                R.bool.config_launcher_setMultiLineAllAppsIconLabel);
+
         for (int i = startIndex; i < endIndex; ++i) {
             AppInfo info = isCTFlag
                     ? ((page == 0) ? ctFirstPageApps.get(i) : ctApps.get(i))
                     : mFilteredApps.get(i);
 
-            BubbleTextView icon = (BubbleTextView) mLayoutInflater.inflate(
-                    R.layout.apps_customize_application, layout, false);
+            BubbleTextView icon = null;
+            if (LauncherApplication.sConfigLauncherAllAppsBgTransparency) {
+                icon = (BubbleTextView) mLayoutInflater.inflate(
+                        R.layout.apps_customize_application_transparent_bg, layout, false);
+            } else {
+                icon = (BubbleTextView) mLayoutInflater.inflate(
+                        R.layout.apps_customize_application, layout, false);
+            }
+
+            // Multiline will be disabled in case of large icons enabled ,
+            // as we have lower cell space.
+            if(!useLargeIcons && setMultiLineAllAppsIconLabel) {
+                icon.setSingleLine(false);
+                icon.setMaxLines(2);
+            }
+
             icon.applyFromApplicationInfo(info);
+            if (mLauncher.getBlurAppPage()) {
+                icon.setTextColor(0xFF000000);
+            }
             icon.setTextVisibility(!hideIconLabels);
             icon.setOnClickListener(mLauncher);
             icon.setOnLongClickListener(this);
@@ -1514,16 +1571,11 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         } else {
             if (mOverscrollTransformsSet) {
                 mOverscrollTransformsSet = false;
-                View v0 = getPageAt(0);
-                View v1 = getPageAt(getChildCount() - 1);
+                View v0 = getPageAt(mCurrentPage);
                 v0.setRotationY(0);
-                v1.setRotationY(0);
                 v0.setCameraDistance(mDensity * mCameraDistance);
-                v1.setCameraDistance(mDensity * mCameraDistance);
                 v0.setPivotX(v0.getMeasuredWidth() / 2);
-                v1.setPivotX(v1.getMeasuredWidth() / 2);
                 v0.setPivotY(v0.getMeasuredHeight() / 2);
-                v1.setPivotY(v1.getMeasuredHeight() / 2);
             }
         }
     }
@@ -1592,6 +1644,13 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
     }
 
     public Comparator<AppInfo> getComparatorForSortMode() {
+
+        if (LauncherApplication.sConfigLauncherSortLaunchCountDwnldApps) {
+            return getNewDownloadedComparatorForSortMode();
+        } else if (LauncherApplication.sConfigLauncherSortDwnldAppsAtEnd) {
+            return getDownloadedComparatorForSortMode();
+        }
+
         switch (mSortMode) {
             case Title:
                 return LauncherModel.getAppNameComparator();
@@ -1601,6 +1660,43 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 return LauncherModel.APP_INSTALL_TIME_COMPARATOR;
         }
         return LauncherModel.getAppNameComparator();
+    }
+
+    public Comparator<AppInfo> getNewDownloadedComparatorForSortMode() {
+        switch (mSortMode) {
+            case Title:
+                return LauncherModel
+                        .getNewDownloadedAppNameComparator(mLauncher
+                                .getStats());
+            case LaunchCount:
+                return LauncherModel
+                        .getNewDownloadedAppLaunchCountComparator(mLauncher
+                                .getStats());
+            case InstallTime:
+                return LauncherModel
+                        .getNewDownloadedAppInstallTimeComparator(mLauncher
+                                .getStats());
+        }
+        return LauncherModel
+                .getNewDownloadedAppNameComparator(mLauncher
+                        .getStats());
+    }
+
+    public Comparator<AppInfo> getDownloadedComparatorForSortMode() {
+        switch (mSortMode) {
+            case Title:
+                return LauncherModel
+                        .getDownloadedAppNameComparator();
+            case LaunchCount:
+                return LauncherModel
+                        .getDownloadedAppLaunchCountComparator(mLauncher
+                                .getStats());
+            case InstallTime:
+                return LauncherModel
+                        .getDownloadedAppInstallTimeComparator();
+        }
+        return LauncherModel
+                .getDownloadedAppNameComparator();
     }
 
     public void setSortMode(SortMode sortMode) {
@@ -1679,16 +1775,78 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 removePreInstallApps();
             }
 
-            filterAppsWithoutInvalidate();
-
             if (mPreInstallConfig) {
                 addPreInstallApps();
             }
 
-            sortByCustomization();
+            if (LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
+                // common bug . Duplicate apps shown in 3rd screen which includes 1st
+                // page and 2nd page apps. Happens as filterAppsWithoutInvalidate() is called
+                // before sortByCustomization().
+                sortByCustomization();
+                filterAppsWithoutInvalidate();
+            } else {
+                sortByCustomization();
+                filterAppsWithoutInvalidate();
+            }
+
             updatePageCountsAndInvalidateData();
         }
     }
+
+    private boolean appStringEqualsComponentName(String appString, ComponentName componentName) {
+        String packageName = "";
+        String className = "";
+
+        if (appString.contains("/")) {
+            String[] parts = appString.split("/");
+            packageName = parts[0];
+            if (parts.length > 1) {
+                className = parts[1];
+            }
+
+            return packageName.equals(componentName.getPackageName())
+                    && componentName.getClassName().equals(className);
+        } else {
+            // There is no separator, the whole input string is the class name.
+            return componentName.getClassName().equals(appString);
+        }
+    }
+
+    /**
+     * Check if the given AppInfo exists in the given list of predetermined apps.
+     *
+     * The supported syntax for the strings in appList is one of:
+     *
+     * com.example.package/com.example.package.Activity
+     *
+     * or just the Activity name:
+     *
+     * com.example.package.Activity.
+     *
+     *
+     * If the package name is supplied, the ComponentName instance must match
+     * both the package name and the class name. Otherise, only the class name must match.
+     */
+    private boolean appListContainsInfo(ArrayList<String> appList,
+                                        ComponentName componentName) {
+        return getIndexOfComponent(appList, componentName) != -1;
+    }
+
+    private int getIndexOfComponent(ArrayList<String> appList,
+                                    ComponentName componentName) {
+        int index = 0;
+        for (String appString : appList) {
+            boolean wasFound = appStringEqualsComponentName(appString, componentName);
+            if (wasFound) {
+                return index;
+            }
+            index++;
+        }
+        // No match
+        return -1;
+    }
+
     private void addAppsWithoutInvalidate(ArrayList<AppInfo> list) {
         // We add it in place, in alphabetical order
         int count = list.size();
@@ -1697,7 +1855,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         for (int i = 0; i < count; ++i) {
             AppInfo info = list.get(i);
 
-            if (mCTFirstPageArray.indexOf(info.componentName.getClassName()) > INVALID_INDEX) {
+            if (appListContainsInfo(mCTFirstPageArray, info.componentName)) {
                 //for CT first page
                 int index = Collections.binarySearch(ctFirstPageApps, info,
                         APP_CT_FIRSTPAGE_COMPARATOR);
@@ -1705,8 +1863,7 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
                 if (index < 0) {
                     ctFirstPageApps.add(-(index + 1), info);
                 }
-            } else if (mCTClassArray.indexOf(info.componentName.getClassName())
-                    > INVALID_INDEX) {
+            } else if (appListContainsInfo(mCTClassArray, info.componentName)) {
                 int index = Collections.binarySearch(ctApps, info, APP_CT_COMPARATOR);
 
                 if (index < 0){
@@ -1731,10 +1888,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             for(int i = 0; i< list.size(); i++){
                 AppInfo info = list.get(i);
 
-                for(String preClass: mPreClassArray){
-                    if(preClass.equals(info.componentName.getClassName())) {
-                        preList.add(info);
-                    }
+                if (appListContainsInfo(mPreClassArray, info.componentName)) {
+                    preList.add(info);
                 }
             }
 
@@ -1747,12 +1902,12 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             }
 
             addAppsWithoutInvalidate(list);
-            filterAppsWithoutInvalidate();
 
             if (mPreInstallConfig) {
                 addPreInstallApps();
             }
 
+            filterAppsWithoutInvalidate();
             updatePageCountsAndInvalidateData();
         }
     }
@@ -1813,10 +1968,10 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             }
 
             addAppsWithoutInvalidate(list);
-            filterAppsWithoutInvalidate();
             if (mPreInstallConfig) {
                 addPreInstallApps();
             }
+            filterAppsWithoutInvalidate();
             updatePageCountsAndInvalidateData();
         }
     }
@@ -1836,6 +1991,31 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
             }
         }
         Collections.sort(mFilteredApps, getComparatorForSortMode());
+
+        if (LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
+            // common bug. Protected apps not filtered from ctApps and
+            // ctFirstPageApps
+            filterProtectedApps(ctFirstPageApps);
+            filterProtectedApps(ctApps);
+        }
+    }
+
+    public void filterProtectedApps(ArrayList<AppInfo> apps) {
+        if (apps.size() > 0) {
+            Iterator<AppInfo> iterator = apps.iterator();
+            while (iterator.hasNext()) {
+                AppInfo appInfo = iterator.next();
+                boolean isSystemApp = (appInfo.flags & AppInfo.DOWNLOADED_FLAG) == 0;
+                if (mProtectedApps
+                        .contains(appInfo.componentName)
+                        ||
+                        (isSystemApp && !getShowSystemApps())
+                        ||
+                        (!isSystemApp && !getShowDownloadedApps())) {
+                    iterator.remove();
+                }
+            }
+        }
     }
 
     public void filterApps() {
@@ -2049,7 +2229,8 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
         for (int i =0; i<preCount; i++) {
             for (int j=0; j<N; j++) {
                 final AppInfo item = mApps.get(j);
-                if (mPreClassArray.get(i).equals(item.componentName.getClassName())) {
+                String appString = mPreClassArray.get(i);
+                if (appStringEqualsComponentName(appString, item.componentName)) {
                     mPreAppList.add(item);
                 }
             }
@@ -2065,19 +2246,20 @@ public class AppsCustomizePagedView extends PagedViewWithDraggableItems implemen
     }
 
     private void sortByCustomization() {
-        if(LauncherApplication.SHOW_CTAPP_FEATURE){
+        if (LauncherApplication.SHOW_CTAPP_FEATURE
+                || LauncherApplication.sConfigLauncherFixAllAppsScr1Scr2) {
             ctApps.clear();
             ctFirstPageApps.clear();
 
             for (AppInfo info:mApps) {
-                String className = info.componentName.getClassName();
-                int index = mCTClassArray.indexOf(className);
+                ComponentName componentName = info.componentName;
+                int index = getIndexOfComponent(mCTClassArray, componentName);
 
                 if(index > -1){
                     ctApps.add(info);
                 }
 
-                int firstPageIndex = mCTFirstPageArray.indexOf(className);
+                int firstPageIndex = getIndexOfComponent(mCTFirstPageArray, componentName);
 
                 if(firstPageIndex > -1){
                     ctFirstPageApps.add(info);

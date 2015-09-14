@@ -128,16 +128,25 @@ public class HiddenFolderFragment extends Fragment {
 
     private ArrayList<AppEntry> loadApps(List<Pair<ComponentName, CharSequence>> items) {
         ArrayList<AppEntry> apps = new ArrayList<AppEntry>();
+        int pos = 0;
         for (Pair<ComponentName, CharSequence> item : items) {
-            apps.add(new AppEntry(item.first, item.second));
+            apps.add(new AppEntry(item.first, item.second, pos));
+            pos++;
         }
         return apps;
     }
 
     private void removeComponentFromFolder(AppEntry app) {
-        mLauncher.mHiddenFolderIcon.getFolderInfo().remove(
-                mLauncher.mHiddenFolderIcon.getFolder()
-                        .getShortcutForComponent(app.componentName));
+        ShortcutInfo info;
+        if (app.componentName != null) {
+            info = mLauncher.mHiddenFolderIcon.getFolder()
+                    .getShortcutForComponent(app.componentName);
+        } else {
+            // Shortcut does not have componentName, use position since it maps to
+            // reading order position in the folder
+            info = mLauncher.mHiddenFolderIcon.getFolder().getShortcutForPosition(app.position);
+        }
+        mLauncher.mHiddenFolderIcon.getFolderInfo().remove(info);
 
         mAppEntries.remove(app);
         mAppsAdapter.remove(app);
@@ -227,7 +236,10 @@ public class HiddenFolderFragment extends Fragment {
 
             viewHolder.title.setText(app.title);
 
-            Drawable icon = mIcons.get(app.componentName.getPackageName());
+            Drawable icon = null;
+            if (app.componentName != null) {
+                icon = mIcons.get(app.componentName.getPackageName());
+            }
             viewHolder.icon.setImageDrawable(icon != null ? icon : mDefaultImg);
             viewHolder.remove.setOnClickListener(new OnClickListener() {
                 @Override
@@ -284,8 +296,9 @@ public class HiddenFolderFragment extends Fragment {
             protected Void doInBackground(AppEntry... apps) {
                 for (AppEntry app : apps) {
                     try {
-                        if (mIcons.containsKey(app.componentName
-                                .getPackageName())) {
+                        // Widget icons do not have a
+                        if (app.componentName == null ||
+                                mIcons.containsKey(app.componentName.getPackageName())) {
                             continue;
                         }
                         Drawable icon = mPackageManager
@@ -311,10 +324,12 @@ public class HiddenFolderFragment extends Fragment {
     private final class AppEntry {
         public final ComponentName componentName;
         public final CharSequence title;
+        public final int position;
 
-        public AppEntry(ComponentName component, CharSequence title) {
+        public AppEntry(ComponentName component, CharSequence title, int position) {
             this.componentName = component;
             this.title = title;
+            this.position = position;
         }
     }
 

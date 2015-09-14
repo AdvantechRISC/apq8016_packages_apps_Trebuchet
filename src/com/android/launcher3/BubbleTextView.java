@@ -42,15 +42,16 @@ public class BubbleTextView extends TextView {
 
     private static SparseArray<Theme> sPreloaderThemes = new SparseArray<>(2);
 
-    private static final float SHADOW_LARGE_RADIUS = 4.0f;
-    private static final float SHADOW_SMALL_RADIUS = 1.75f;
-    private static final float SHADOW_Y_OFFSET = 2.0f;
-    private static final int SHADOW_LARGE_COLOUR = 0xDD000000;
-    private static final int SHADOW_SMALL_COLOUR = 0xCC000000;
+    public static final float SHADOW_LARGE_RADIUS = 4.0f;
+    public static final float SHADOW_SMALL_RADIUS = 1.75f;
+    public static final float SHADOW_Y_OFFSET = 2.0f;
+    public static final int SHADOW_LARGE_COLOUR = 0xDD000000;
+    public static final int SHADOW_SMALL_COLOUR = 0xCC000000;
     static final float PADDING_V = 3.0f;
 
     private HolographicOutlineHelper mOutlineHelper;
     private Bitmap mPressedBackground;
+    private boolean mUseFullClickAnimation = false;
 
     private float mSlop;
 
@@ -109,6 +110,8 @@ public class BubbleTextView extends TextView {
         if (mCustomShadowsEnabled) {
             setShadowLayer(SHADOW_LARGE_RADIUS, 0.0f, SHADOW_Y_OFFSET, SHADOW_LARGE_COLOUR);
         }
+        mUseFullClickAnimation = getResources().getBoolean(
+                R.bool.preferences_interface_general_app_icon_animation);
     }
 
     public void applyFromShortcutInfo(ShortcutInfo info, IconCache iconCache,
@@ -204,7 +207,7 @@ public class BubbleTextView extends TextView {
                 // So that the pressed outline is visible immediately on setStayPressed(),
                 // we pre-create it on ACTION_DOWN (it takes a small but perceptible amount of time
                 // to create it)
-                if (mPressedBackground == null) {
+                if (mUseFullClickAnimation && mPressedBackground == null) {
                     mPressedBackground = mOutlineHelper.createMediumDropShadow(this);
                 }
 
@@ -236,7 +239,7 @@ public class BubbleTextView extends TextView {
         }
 
         // Only show the shadow effect when persistent pressed state is set.
-        if (getParent() instanceof ShortcutAndWidgetContainer) {
+        if (mUseFullClickAnimation && getParent() instanceof ShortcutAndWidgetContainer) {
             CellLayout layout = (CellLayout) getParent().getParent();
             layout.setPressedIcon(this, mPressedBackground, mOutlineHelper.shadowBitmapPadding);
         }
@@ -253,7 +256,7 @@ public class BubbleTextView extends TextView {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (super.onKeyDown(keyCode, event)) {
             // Pre-create shadow so show immediately on click.
-            if (mPressedBackground == null) {
+            if (mUseFullClickAnimation && mPressedBackground == null) {
                 mPressedBackground = mOutlineHelper.createMediumDropShadow(this);
             }
             return true;
