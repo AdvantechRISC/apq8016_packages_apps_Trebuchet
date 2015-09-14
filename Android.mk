@@ -25,6 +25,7 @@ LOCAL_MODULE_TAGS := optional
 
 LOCAL_STATIC_JAVA_LIBRARIES := android-support-v13 \
                                android-support-v7-recyclerview \
+                               android-support-v7-recyclerview-res \
                                guava
 LOCAL_JAVA_LIBRARIES := telephony-common
 
@@ -32,7 +33,8 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src) \
     $(call all-java-files-under, WallpaperPicker/src) \
     $(call all-renderscript-files-under, src) \
     $(call all-proto-files-under, protos)
-LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/WallpaperPicker/res $(LOCAL_PATH)/res
+LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/WallpaperPicker/res $(LOCAL_PATH)/res \
+                      $(TOP)/frameworks/support/v7/recyclerview/res
 
 LOCAL_AAPT_FLAGS := --auto-add-overlay
 
@@ -41,55 +43,15 @@ LOCAL_PROTOC_FLAGS := --proto_path=$(LOCAL_PATH)/protos/
 
 # LOCAL_SDK_VERSION := 21
 
-LOCAL_PACKAGE_NAME := Launcher3
+LOCAL_PACKAGE_NAME := Trebuchet
 LOCAL_PRIVILEGED_MODULE := true
-#LOCAL_CERTIFICATE := shared
-
-LOCAL_AAPT_FLAGS += --rename-manifest-package com.cyanogenmod.trebuchet
+LOCAL_CERTIFICATE := shared
 
 LOCAL_PROGUARD_FLAG_FILES := proguard.flags
 LOCAL_PROGUARD_ENABLED := disabled
 
-LOCAL_OVERRIDES_PACKAGES += Home
+LOCAL_OVERRIDES_PACKAGES += Home Launcher2 Launcher3
 
 include $(BUILD_PACKAGE)
 
 include $(call all-makefiles-under,$(LOCAL_PATH))
-
-#
-# Protocol Buffer Debug Utility in Java
-#
-include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES := $(call all-java-files-under, util) \
-    $(call all-proto-files-under, protos)
-
-LOCAL_PROTOC_OPTIMIZE_TYPE := nano
-LOCAL_PROTOC_FLAGS := --proto_path=$(LOCAL_PATH)/protos/
-
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE := launcher_protoutil_lib
-LOCAL_IS_HOST_MODULE := true
-LOCAL_JAR_MANIFEST := util/etc/manifest.txt
-LOCAL_STATIC_JAVA_LIBRARIES := host-libprotobuf-java-2.3.0-nano
-
-include $(BUILD_HOST_JAVA_LIBRARY)
-
-#
-# Protocol Buffer Debug Utility Wrapper Script
-#
-include $(CLEAR_VARS)
-LOCAL_IS_HOST_MODULE := true
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE := launcher_protoutil
-
-include $(BUILD_SYSTEM)/base_rules.mk
-
-$(LOCAL_BUILT_MODULE): launcher_protoutil_lib
-$(LOCAL_BUILT_MODULE): $(LOCAL_PATH)/util/etc/launcher_protoutil | $(ACP)
-	@echo "Copy: $(PRIVATE_MODULE) ($@)"
-	$(copy-file-to-new-target)
-	$(hide) chmod 755 $@
-
-INTERNAL_DALVIK_MODULES += $(LOCAL_INSTALLED_MODULE)
