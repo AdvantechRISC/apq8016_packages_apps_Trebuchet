@@ -201,7 +201,9 @@ public class Launcher extends Activity
     // The Intent extra that defines whether to ignore the launch animation
     static final String INTENT_EXTRA_IGNORE_LAUNCH_ANIMATION =
             "com.android.launcher3.intent.extra.shortcut.INGORE_LAUNCH_ANIMATION";
-
+    // Intent broadcasted when the device screen swithces to idle(home screen)
+    public static final String CAT_IDLE_SCREEN_ACTION =
+                                    "org.codeaurora.action.stk.idle_screen";
     // Type: int
     private static final String RUNTIME_STATE_CURRENT_SCREEN = "launcher.current_screen";
     // Type: int
@@ -1228,7 +1230,7 @@ public class Launcher extends Activity
         updateGridIfNeeded();
 
         // Notify that Home or Idle Screen is being started or resumed
-        Intent idleScreenIntent = new Intent(AppInterface.CAT_IDLE_SCREEN_ACTION);
+        Intent idleScreenIntent = new Intent(CAT_IDLE_SCREEN_ACTION);
         idleScreenIntent.putExtra("SCREEN_IDLE", true);
         Log.d(TAG,"Broadcasting Home Idle Screen Intent ...");
         sendBroadcast(idleScreenIntent);
