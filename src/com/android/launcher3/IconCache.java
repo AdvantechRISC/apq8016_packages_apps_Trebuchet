@@ -339,12 +339,6 @@ public class IconCache {
         }
     }
 
-    private Bitmap getCustomizedIcon(){
-        Resources res = mContext.getResources();
-        Bitmap bitmap = BitmapFactory.decodeResource(res, R.drawable.customize_browser_icon);
-        return bitmap;
-    }
-
     public Bitmap getIcon(ComponentName component, LauncherActivityInfoCompat info,
             HashMap<Object, CharSequence> labelCache) {
         return getIcon(component, info, labelCache, false);
@@ -416,20 +410,8 @@ public class IconCache {
                 }
 
                 entry.contentDescription = mUserManager.getBadgedLabelForUser(entry.title, user);
-                if (info.getComponentName().toString().trim().contains("com.android.chrome")
-                        && mContext.getResources().getBoolean(com.android.internal.
-                                R.bool.config_regional_customize_default_browser_icon)) {
-                    String customizedTitle = mContext.getResources().getString(
-                            com.android.internal.
-                            R.string.config_regional_customize_default_browser_title);
-                    if (customizedTitle != null && customizedTitle != "") {
-                        entry.title = customizedTitle;
-                    }
-                    entry.icon = getCustomizedIcon();
-                } else {
-                    entry.icon = Utilities.createIconBitmap(
-                            info.getBadgedIcon(mIconDpi), mContext, unreadNum, newDownload);
-                }
+                entry.icon = Utilities.createIconBitmap(
+                        info.getBadgedIcon(mIconDpi), mContext, unreadNum, newDownload);
             } else {
                 entry.title = "";
                 Bitmap preloaded = getPreloadedIcon(componentName, user);
