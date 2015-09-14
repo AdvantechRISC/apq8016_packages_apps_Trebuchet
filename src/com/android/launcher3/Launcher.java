@@ -4587,6 +4587,9 @@ public class Launcher extends Activity
             return null;
         }
         ComponentName searchComponent = assistIntent.getComponent();
+        if (searchComponent == null) {
+            return null;
+        }
 
         // Find the first widget from the same package as the global assist activity
         List<AppWidgetProviderInfo> widgets = AppWidgetManager.getInstance(this)
