@@ -33,7 +33,7 @@
         launcher:title="@string/foldname_juegos"
         launcher:screen="1"
         launcher:x="0"
-        launcher:y="3" >
+        launcher:y="4" >
         <favorite
             launcher:className="com.ea.game.bejeweled2_LATAM.ContentDownload"
             launcher:packageName="com.ea.game.bejeweled2_LATAM" />
@@ -55,25 +55,25 @@
         launcher:packageName="com.android.music"
         launcher:screen="1"
         launcher:x="1"
-        launcher:y="3" />
+        launcher:y="4" />
     <favorite
         launcher:className="com.android.camera.CameraLauncher"
         launcher:packageName="org.codeaurora.snapcam"
         launcher:screen="1"
         launcher:x="2"
-        launcher:y="3" />
+        launcher:y="4" />
     <favorite
         launcher:className="com.android.gallery3d.app.GalleryActivity"
         launcher:packageName="com.android.gallery3d"
         launcher:screen="1"
         launcher:x="3"
-        launcher:y="3" />
+        launcher:y="4" />
 
     <folder
         launcher:screen="2"
         launcher:title="@string/foldname_google"
         launcher:x="0"
-        launcher:y="3" >
+        launcher:y="4" >
         <favorite
             launcher:className="com.google.android.googlequicksearchbox.SearchActivity"
             launcher:packageName="com.google.android.googlequicksearchbox" />
@@ -132,19 +132,19 @@
         launcher:packageName="com.android.vending"
         launcher:screen="2"
         launcher:x="1"
-        launcher:y="3" />
+        launcher:y="4" />
     <favorite
         launcher:className="com.telcel.imk.MainActivity"
         launcher:packageName="com.claro.claromusica.latam"
         launcher:screen="2"
         launcher:x="2"
-        launcher:y="3" />
+        launcher:y="4" />
     <favorite
         launcher:className="com.clarovideo.app.ui.activities.SplashActivity"
         launcher:packageName="com.dla.android"
         launcher:screen="2"
         launcher:x="3"
-        launcher:y="3" />
+        launcher:y="4" />
 
     <appwidget
         launcher:className="com.gameloft.android.gdc.GDCWidgetProvider"

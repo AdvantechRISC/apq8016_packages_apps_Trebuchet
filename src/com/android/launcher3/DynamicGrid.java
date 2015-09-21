@@ -163,6 +163,38 @@ public class DynamicGrid {
                             (hasAA ? 5 : 5),
                             (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
                             R.xml.default_workspace_4x4_no_all_apps));
+            deviceProfiles
+                    .add(new DeviceProfile("Large Phone",
+                            406, 694,  5, 5,  (useLargeIcons ? 68 : 56),
+                            (useSmallText ? 11.4f : 14.4f),  5,
+                            (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
+                            R.xml.default_workspace_5x5_no_all_apps));
+            // The tablet profile is odd in that the landscape orientation
+            // also includes the nav bar on the side
+            deviceProfiles
+                    .add(new DeviceProfile("Nexus 7",
+                            575, 904,  5, 6, (useLargeIcons ? 76 : 60),
+                            (useSmallText ? 11.4f : 14.4f),  7,
+                            (useLargeIcons ? 64 : 52), fourByFourDefaultLayout,
+                            R.xml.default_workspace_5x6_no_all_apps));
+        } else if (context.getResources().getBoolean(
+                R.bool.config_launcher_customWorkspace_clr)) {
+            deviceProfiles
+                    .add(new DeviceProfile("Large Phone",
+                            406, 694,  5, 5,  (useLargeIcons ? 68 : 56),
+                            (useSmallText ? 11.4f : 14.4f),  5,
+                            (useLargeIcons ? 60 : 48), R.xml.clr_default_workspace_5x5,
+                            R.xml.default_workspace_5x5_no_all_apps));
+            // The tablet profile is odd in that the landscape orientation
+            // also includes the nav bar on the side
+            deviceProfiles
+                    .add(new DeviceProfile("Nexus 7",
+                            575, 904,  5, 6, (useLargeIcons ? 76 : 60),
+                            (useSmallText ? 11.4f : 14.4f),  7,
+                            (useLargeIcons ? 64 : 52), R.xml.clr_default_workspace_5x5,
+                            R.xml.default_workspace_5x6_no_all_apps));
+
+
         } else {
             deviceProfiles.add(new DeviceProfile("Nexus S",
                     296, 491.33f,  4, 4,  (useLargeIcons ? 58 : 46), (useSmallText ?
@@ -189,17 +221,18 @@ public class DynamicGrid {
                             (hasAA ? 5 : 5),
                             (useLargeIcons ? 60 : 48), fourByFourDefaultLayout,
                             R.xml.default_workspace_4x4_no_all_apps));
+            deviceProfiles.add(new DeviceProfile("Large Phone",
+                    406, 694,  5, 5,  (useLargeIcons ? 68 : 56), (useSmallText ? 11.4f : 14.4f),  5,
+                    (useLargeIcons ? 60 : 48), R.xml.default_workspace_5x5,
+                    R.xml.default_workspace_5x5_no_all_apps));
+            // The tablet profile is odd in that the landscape orientation
+            // also includes the nav bar on the side
+            deviceProfiles.add(new DeviceProfile("Nexus 7",
+                    575, 904,  5, 6, (useLargeIcons ? 76 : 60), (useSmallText ? 11.4f : 14.4f),  7,
+                    (useLargeIcons ? 64 : 52), R.xml.default_workspace_5x6,
+                    R.xml.default_workspace_5x6_no_all_apps));
+
         }
-        deviceProfiles.add(new DeviceProfile("Large Phone",
-                406, 694,  5, 5,  (useLargeIcons ? 68 : 56), (useSmallText ? 11.4f : 14.4f),  5,
-                (useLargeIcons ? 60 : 48), R.xml.default_workspace_5x5,
-                R.xml.default_workspace_5x5_no_all_apps));
-        // The tablet profile is odd in that the landscape orientation
-        // also includes the nav bar on the side
-        deviceProfiles.add(new DeviceProfile("Nexus 7",
-                575, 904,  5, 6, (useLargeIcons ? 76 : 60), (useSmallText ? 11.4f : 14.4f),  7,
-                (useLargeIcons ? 64 : 52), R.xml.default_workspace_5x6,
-                R.xml.default_workspace_5x6_no_all_apps));
         // Larger tablet profiles always have system bars on the top & bottom
         deviceProfiles.add(new DeviceProfile("Nexus 10",
                 727, 1207,  5, 6,  (useLargeIcons ? 80 : 64), (useSmallText ? 11.4f : 14.4f),  7,
