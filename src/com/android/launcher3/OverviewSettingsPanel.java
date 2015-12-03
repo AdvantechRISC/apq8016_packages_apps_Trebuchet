@@ -154,6 +154,17 @@ public class OverviewSettingsPanel {
         });
         manageAppsButton.setOnTouchListener(mLauncher.getHapticFeedbackTouchListener());
 
+        View addWorkspaceButton = mLauncher.findViewById(R.id.add_workspace_button);
+        addWorkspaceButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View arg0) {
+                if (!mLauncher.getWorkspace().isSwitchingState()) {
+                    mLauncher.insertNewEmptyWorkspace();
+                }
+            }
+        });
+        manageAppsButton.setOnTouchListener(mLauncher.getHapticFeedbackTouchListener());
+
         View defaultScreenButton = mLauncher.findViewById(R.id.default_screen_button);
         defaultScreenButton.setOnClickListener(new OnClickListener() {
             @Override

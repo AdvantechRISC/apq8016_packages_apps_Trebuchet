@@ -756,6 +756,48 @@ public class LauncherModel extends BroadcastReceiver
         }
     }
 
+    static private long getEmptyScreenId() {
+        long screenId = sBgWorkspaceScreens.size() + 1;
+        long currScreenId = screenId;
+        // If the screenId does not follow the sequence,
+        // need to enumerate all the screenId in DB.
+        if (sBgWorkspaceScreens.contains(screenId)) {
+            for (long i = 1; i < screenId; ++ i) {
+                if (!sBgWorkspaceScreens.contains(i)) {
+                    currScreenId = i;
+                    return currScreenId;
+                }
+            }
+        }
+        LauncherAppState.getLauncherProvider().updateMaxScreenId(currScreenId);
+        if (DEBUG_LOADERS) Log.d(TAG, "getEmptyScreenId: " + currScreenId);
+        return currScreenId;
+    }
+
+    static private void addScreenIdToDatabase(
+        Context context, ItemInfo item, long screenId) {
+        addItemToDatabase(context, item, item.container,
+            screenId, item.cellX, item.cellY, false);
+        sBgWorkspaceScreens.add(screenId);
+    }
+
+    static private boolean updateScreenIdDatabase(Context context, long screenId) {
+        for (ItemInfo item: sBgItemsIdMap.values()) {
+            if (null != item &&
+                item.container == LauncherSettings.Favorites.CONTAINER_DESKTOP) {
+                addScreenIdToDatabase(context, item, screenId);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean addNewScreen(Context context) {
+        synchronized (sBgLock) {
+            return updateScreenIdDatabase(context, getEmptyScreenId());
+        }
+    }
+
     static void checkItemInfo(final ItemInfo item) {
         final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         final long itemId = item.id;

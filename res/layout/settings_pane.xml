@@ -69,6 +69,15 @@
                     android:drawableTop="@drawable/manage_apps_button"
                     android:text="@string/manage_apps_button_text" />
 
+                <TextView
+                    android:id="@+id/add_workspace_button"
+                    android:layout_width="0dip"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    style="@style/SettingsPaneButton"
+                    android:drawableTop="@drawable/add_workspace_button"
+                    android:text="@string/add_workspace_button_text" />
+
             </LinearLayout>
 
         </LinearLayout>

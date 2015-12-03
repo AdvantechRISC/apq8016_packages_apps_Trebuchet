@@ -289,6 +289,9 @@ s -->
     <string name="settings_button_text">Settings</string>
     <!-- Text for manage apps button -->
     <string name="manage_apps_button_text">Apps</string>
+    <!-- Text for add new workspace button -->
+    <string name="add_workspace_button_text">New Home</string>
+    <string name="add_workspace_error">No Shortcut or Widget on the Home.</string>
 
     <!-- Label on an icon that references an uninstalled package, that is going to be installed at some point. [CHAR_LIMIT=15] -->
     <string name="package_state_enqueued">Waiting</string>

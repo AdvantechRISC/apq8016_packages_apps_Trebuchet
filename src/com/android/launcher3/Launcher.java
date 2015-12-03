@@ -1520,6 +1520,17 @@ public class Launcher extends Activity
         }
     }
 
+    public void insertNewEmptyWorkspace() {
+        if (mWorkspace.isInOverviewMode()) {
+            mWorkspace.exitOverviewMode(false);
+        }
+        if(getModel() != null) getModel().forceReload();
+        if (!LauncherModel.addNewScreen(this)) {
+            Toast.makeText(this,
+                R.string.add_workspace_error, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public interface QSBScroller {
         public void setScrollY(int scrollY);
     }
