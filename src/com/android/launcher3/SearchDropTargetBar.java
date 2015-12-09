@@ -46,6 +46,7 @@ public class SearchDropTargetBar extends FrameLayout implements DragController.D
     private View mDropTargetBar;
     private ButtonDropTarget mInfoDropTarget;
     private ButtonDropTarget mDeleteDropTarget;
+    private ButtonDropTarget mRenameDropTarget;
     private int mBarHeight;
     private boolean mDeferOnDragEnd = false;
 
@@ -64,11 +65,14 @@ public class SearchDropTargetBar extends FrameLayout implements DragController.D
         dragController.addDragListener(this);
         dragController.addDragListener(mInfoDropTarget);
         dragController.addDragListener(mDeleteDropTarget);
+        dragController.addDragListener(mRenameDropTarget);
         dragController.addDropTarget(mInfoDropTarget);
         dragController.addDropTarget(mDeleteDropTarget);
+        dragController.addDropTarget(mRenameDropTarget);
         dragController.setFlingToDeleteDropTarget(mDeleteDropTarget);
         mInfoDropTarget.setLauncher(launcher);
         mDeleteDropTarget.setLauncher(launcher);
+        mRenameDropTarget.setLauncher(launcher);
 
         setupQSB(launcher);
     }
@@ -109,9 +113,11 @@ public class SearchDropTargetBar extends FrameLayout implements DragController.D
         mDropTargetBar = findViewById(R.id.drag_target_bar);
         mInfoDropTarget = (ButtonDropTarget) mDropTargetBar.findViewById(R.id.info_target_text);
         mDeleteDropTarget = (ButtonDropTarget) mDropTargetBar.findViewById(R.id.delete_target_text);
+        mRenameDropTarget = (ButtonDropTarget) mDropTargetBar.findViewById(R.id.rename_target_text);
 
         mInfoDropTarget.setSearchDropTargetBar(this);
         mDeleteDropTarget.setSearchDropTargetBar(this);
+        mRenameDropTarget.setSearchDropTargetBar(this);
 
         mEnableDropDownDropTargets =
             getResources().getBoolean(R.bool.config_useDropTargetDownTransition);

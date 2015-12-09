@@ -808,6 +808,10 @@ public class Launcher extends Activity
         return !mModel.isLoadingWorkspace();
     }
 
+    public void updateTitleDb(ShortcutInfo info, String title) {
+        mModel.updateShortcutTitle(this, info, title);
+    }
+
     static int getScreen() {
         synchronized (sLock) {
             return sScreen;

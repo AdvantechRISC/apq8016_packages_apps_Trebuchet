@@ -3347,6 +3347,11 @@ public class LauncherModel extends BroadcastReceiver
         sWorker.post(r);
     }
 
+    public void updateShortcutTitle(Context context, ShortcutInfo info, String title) {
+        info.title = title;
+        updateItemInDatabase(context, info);
+    }
+
     private class PackageUpdatedTask implements Runnable {
         int mOp;
         String[] mPackages;
@@ -3694,8 +3699,13 @@ public class LauncherModel extends BroadcastReceiver
         }
         info.setIcon(icon);
 
+        // from the db
+        if (c != null) {
+            info.title =  c.getString(titleIndex);
+        }
+
         // From the cache.
-        if (labelCache != null) {
+        if (info.title == null && labelCache != null) {
             info.title = labelCache.get(componentName);
         }
 
@@ -3704,12 +3714,6 @@ public class LauncherModel extends BroadcastReceiver
             info.title = lai.getLabel();
             if (labelCache != null) {
                 labelCache.put(componentName, info.title);
-            }
-        }
-        // from the db
-        if (info.title == null) {
-            if (c != null) {
-                info.title =  c.getString(titleIndex);
             }
         }
         // fall back to the class name of the activity

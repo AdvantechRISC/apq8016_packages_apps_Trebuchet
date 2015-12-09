@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Not a Contribution
+ *
  * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,29 +19,39 @@
 
 package com.android.launcher3;
 
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.drawable.TransitionDrawable;
+import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 
 import com.android.launcher3.compat.UserHandleCompat;
 
-public class InfoDropTarget extends ButtonDropTarget {
+public class RenameDropTarget extends ButtonDropTarget {
 
+    private static String TAG = "RenameDropTarget";
+    private static boolean DBG = false;
     private ColorStateList mOriginalTextColor;
     private TransitionDrawable mDrawable;
+    private Context mCtx;
 
-    public InfoDropTarget(Context context, AttributeSet attrs) {
+    public RenameDropTarget(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
+        mCtx = context;
     }
 
-    public InfoDropTarget(Context context, AttributeSet attrs, int defStyle) {
+    public RenameDropTarget(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        mCtx = context;
     }
 
     @Override
@@ -77,24 +90,38 @@ public class InfoDropTarget extends ButtonDropTarget {
         // in onDrop, because it allows us to reject the drop (by returning false)
         // so that the object being dragged isn't removed from the drag source.
         ComponentName componentName = null;
-        if (d.dragInfo instanceof AppInfo) {
-            componentName = ((AppInfo) d.dragInfo).componentName;
-        } else if (d.dragInfo instanceof ShortcutInfo) {
+        if (d.dragInfo instanceof ShortcutInfo) {
             componentName = ((ShortcutInfo) d.dragInfo).intent.getComponent();
-        } else if (d.dragInfo instanceof PendingAddItemInfo) {
-            componentName = ((PendingAddItemInfo) d.dragInfo).componentName;
+            final ShortcutInfo curShortcutInfo = (ShortcutInfo) d.dragInfo;
+            String text = curShortcutInfo.title.toString();
+            final EditText ed = new EditText(mCtx);
+            ed.setSingleLine(true);
+            ed.setText(text);
+            ed.setSelection(text.length());
+            new AlertDialog.Builder(mCtx)
+                .setTitle(R.string.rename_desc_label)
+                .setIcon(android.R.drawable.ic_dialog_info)
+                .setView(ed)
+                .setPositiveButton(R.string.rename_action,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mLauncher.updateTitleDb(curShortcutInfo,
+                                    ed.getText().toString());
+                            mLauncher.getModel().forceReload();
+                        }
+                    }
+                )
+                .setNegativeButton(R.string.cancel_action,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mLauncher.getModel().forceReload();
+                        }
+                    }
+                )
+                .show();
         }
-        final UserHandleCompat user;
-        if (d.dragInfo instanceof ItemInfo) {
-            user = ((ItemInfo) d.dragInfo).user;
-        } else {
-            user = UserHandleCompat.myUserHandle();
-        }
-
-        if (componentName != null) {
-            mLauncher.startApplicationDetailsActivity(componentName, user);
-        }
-
         // There is no post-drop animation, so clean up the DragView now
         d.deferDragViewCleanupPostAnimation = false;
         return false;
@@ -102,17 +129,20 @@ public class InfoDropTarget extends ButtonDropTarget {
 
     @Override
     public void onDragStart(DragSource source, Object info, int dragAction) {
-        boolean isVisible = true;
-
-        // Hide this button unless we are dragging something from AllApps
-        if (!source.supportsAppInfoDropTarget()) {
-            isVisible = false;
-        }
-
+        boolean isVisible = isVisible(info);
         mActive = isVisible;
         mDrawable.resetTransition();
         setTextColor(mOriginalTextColor);
-        ((ViewGroup) getParent()).setVisibility(isVisible ? View.VISIBLE : View.GONE);
+        this.setVisibility(isVisible ? View.VISIBLE : View.GONE);
+
+
+        if (!TextUtils.isEmpty(getText())) {
+            setText(R.string.rename_target_label);
+        }
+    }
+
+    private boolean isVisible(Object info){
+        return (info instanceof ShortcutInfo);
     }
 
     @Override
