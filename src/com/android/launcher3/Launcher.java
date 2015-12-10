@@ -4583,12 +4583,13 @@ public class Launcher extends Activity
     public AppWidgetProviderInfo resolveSearchAppWidget() {
         if (mAppWidgetManager == null) return null;
 
-        SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-        final Intent assistIntent = searchManager.getAssistIntent(false);
-        if (assistIntent == null) {
-            return null;
+        ComponentName searchComponent = null;
+        try {
+            Intent assistIntent = new Intent(Intent.ACTION_ASSIST);
+            searchComponent = assistIntent.resolveActivity(getPackageManager());
+        } catch (Exception e) {
+            Log.e(TAG, "Exception in resolveSearchAppWidget: " + e);
         }
-        ComponentName searchComponent = assistIntent.getComponent();
         if (searchComponent == null) {
             return null;
         }
