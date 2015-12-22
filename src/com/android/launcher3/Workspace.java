@@ -793,7 +793,7 @@ public class Workspace extends SmoothPagedView
 
         convertFinalScreenToEmptyScreenIfNecessary();
         if (hasExtraEmptyScreen()) {
-            int emptyIndex = mScreenOrder.indexOf(EXTRA_EMPTY_SCREEN_ID);
+            int emptyIndex = isLayoutRtl() ? 0 : mScreenOrder.indexOf(EXTRA_EMPTY_SCREEN_ID);
             if (getNextPage() == emptyIndex) {
                 snapToPage(getNextPage() - 1, SNAP_OFF_EMPTY_SCREEN_DURATION);
                 fadeAndRemoveEmptyScreen(SNAP_OFF_EMPTY_SCREEN_DURATION, FADE_EMPTY_SCREEN_DURATION,
