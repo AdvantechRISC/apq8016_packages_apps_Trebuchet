@@ -243,6 +243,8 @@ public class Folder extends LinearLayout implements DragSource, View.OnClickList
         mFolderLock.measure(measureSpec, measureSpec);
         mFolderLock.setOnClickListener(this);
         mFolderTitleSection.measure(measureSpec, measureSpec);
+
+        mFolderLock.setVisibility(View.GONE);
     }
 
     private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
