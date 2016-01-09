@@ -808,6 +808,10 @@ public class Launcher extends Activity
         return !mModel.isLoadingWorkspace();
     }
 
+    public void updateTitleDb(ShortcutInfo info, String title) {
+        mModel.updateShortcutTitle(this, info, title);
+    }
+
     static int getScreen() {
         synchronized (sLock) {
             return sScreen;
@@ -1513,6 +1517,17 @@ public class Launcher extends Activity
         startActivity(manageApps);
         if (mWorkspace.isInOverviewMode()) {
             mWorkspace.exitOverviewMode(false);
+        }
+    }
+
+    public void insertNewEmptyWorkspace() {
+        if (mWorkspace.isInOverviewMode()) {
+            mWorkspace.exitOverviewMode(false);
+        }
+        if(getModel() != null) getModel().forceReload();
+        if (!LauncherModel.addNewScreen(this)) {
+            Toast.makeText(this,
+                R.string.add_workspace_error, Toast.LENGTH_SHORT).show();
         }
     }
 

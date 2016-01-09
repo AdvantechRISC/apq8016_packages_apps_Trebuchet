@@ -756,6 +756,48 @@ public class LauncherModel extends BroadcastReceiver
         }
     }
 
+    static private long getEmptyScreenId() {
+        long screenId = sBgWorkspaceScreens.size() + 1;
+        long currScreenId = screenId;
+        // If the screenId does not follow the sequence,
+        // need to enumerate all the screenId in DB.
+        if (sBgWorkspaceScreens.contains(screenId)) {
+            for (long i = 1; i < screenId; ++ i) {
+                if (!sBgWorkspaceScreens.contains(i)) {
+                    currScreenId = i;
+                    return currScreenId;
+                }
+            }
+        }
+        LauncherAppState.getLauncherProvider().updateMaxScreenId(currScreenId);
+        if (DEBUG_LOADERS) Log.d(TAG, "getEmptyScreenId: " + currScreenId);
+        return currScreenId;
+    }
+
+    static private void addScreenIdToDatabase(
+        Context context, ItemInfo item, long screenId) {
+        addItemToDatabase(context, item, item.container,
+            screenId, item.cellX, item.cellY, false);
+        sBgWorkspaceScreens.add(screenId);
+    }
+
+    static private boolean updateScreenIdDatabase(Context context, long screenId) {
+        for (ItemInfo item: sBgItemsIdMap.values()) {
+            if (null != item &&
+                item.container == LauncherSettings.Favorites.CONTAINER_DESKTOP) {
+                addScreenIdToDatabase(context, item, screenId);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean addNewScreen(Context context) {
+        synchronized (sBgLock) {
+            return updateScreenIdDatabase(context, getEmptyScreenId());
+        }
+    }
+
     static void checkItemInfo(final ItemInfo item) {
         final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         final long itemId = item.id;
@@ -3347,6 +3389,11 @@ public class LauncherModel extends BroadcastReceiver
         sWorker.post(r);
     }
 
+    public void updateShortcutTitle(Context context, ShortcutInfo info, String title) {
+        info.title = title;
+        updateItemInDatabase(context, info);
+    }
+
     private class PackageUpdatedTask implements Runnable {
         int mOp;
         String[] mPackages;
@@ -3694,8 +3741,13 @@ public class LauncherModel extends BroadcastReceiver
         }
         info.setIcon(icon);
 
+        // from the db
+        if (c != null) {
+            info.title =  c.getString(titleIndex);
+        }
+
         // From the cache.
-        if (labelCache != null) {
+        if (info.title == null && labelCache != null) {
             info.title = labelCache.get(componentName);
         }
 
@@ -3704,12 +3756,6 @@ public class LauncherModel extends BroadcastReceiver
             info.title = lai.getLabel();
             if (labelCache != null) {
                 labelCache.put(componentName, info.title);
-            }
-        }
-        // from the db
-        if (info.title == null) {
-            if (c != null) {
-                info.title =  c.getString(titleIndex);
             }
         }
         // fall back to the class name of the activity

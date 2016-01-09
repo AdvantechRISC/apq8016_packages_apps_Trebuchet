@@ -18,12 +18,26 @@
         xmlns:android="http://schemas.android.com/apk/res/android"
         style="@style/DropTargetButtonContainer"
         android:layout_weight="1">
-        <!-- Delete target -->
-        <com.android.launcher3.DeleteDropTarget
-            style="@style/DropTargetButton"
-            android:id="@+id/delete_target_text"
-            android:text="@string/delete_zone_label_workspace"
-            android:drawableStart="@drawable/remove_target_selector" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <!-- Delete target -->
+            <com.android.launcher3.DeleteDropTarget
+                style="@style/DropTargetButton"
+                android:id="@+id/delete_target_text"
+                android:text="@string/delete_zone_label_workspace"
+                android:drawableStart="@drawable/remove_target_selector" />
+
+            <!-- Rename target -->
+            <com.android.launcher3.RenameDropTarget
+                style="@style/DropTargetButton"
+                android:id="@+id/rename_target_text"
+                android:text="@string/rename_target_label"
+                android:drawableStart="@drawable/info_target_selector" />
+        </LinearLayout>
     </FrameLayout>
     <FrameLayout
         xmlns:android="http://schemas.android.com/apk/res/android"

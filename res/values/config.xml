@@ -146,4 +146,6 @@
     <bool name="config_launcher_customWorkspace_clr_brzl">false</bool>
     <!-- Disable wallpaper scaling in wallpaper preview and when user sets wallpaper -->
     <bool name="config_launcher_disable_wallpaper_scaling">false</bool>
+
+    <bool name="config_regional_customize_default_browser_icon">false</bool>
 </resources>

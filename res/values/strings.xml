@@ -130,6 +130,10 @@ s -->
     <string name="delete_target_uninstall_label">Uninstall</string>
     <!-- Label for the info icon. [CHAR_LIMIT=30] -->
     <string name="info_target_label">App info</string>
+    <!-- Label for the rename drop target. [CHAR_LIMIT=30] -->
+    <string name="rename_target_label">Rename</string>
+    <string name="rename_desc_label">Change Shortcut title to:</string>
+
 
     <!-- Accessibility: Search button -->
     <string name="accessibility_search_button">Search</string>
@@ -285,6 +289,9 @@ s -->
     <string name="settings_button_text">Settings</string>
     <!-- Text for manage apps button -->
     <string name="manage_apps_button_text">Apps</string>
+    <!-- Text for add new workspace button -->
+    <string name="add_workspace_button_text">New Home</string>
+    <string name="add_workspace_error">No Shortcut or Widget on the Home.</string>
 
     <!-- Label on an icon that references an uninstalled package, that is going to be installed at some point. [CHAR_LIMIT=15] -->
     <string name="package_state_enqueued">Waiting</string>
@@ -310,4 +317,5 @@ s -->
     <string name="abandoned_promise_explanation">The app for this icon isn\'t installed.
         You can remove it, or search for the app and install it manually.
     </string>
+    <string name="config_regional_customize_default_browser_title"></string>
 </resources>

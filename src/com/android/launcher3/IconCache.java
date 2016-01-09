@@ -60,6 +60,7 @@ public class IconCache {
     private static final int INITIAL_ICON_CACHE_CAPACITY = 50;
     private static final String RESOURCE_FILE_PREFIX = "icon_";
     private final String STK_PACKAGE_NAME = "com.android.stk";
+    private final String CHROME_PACKAGE_NAME = "com.android.chrome";
 
     // Empty class name is used for storing package default entry.
     private static final String EMPTY_CLASS_NAME = ".";
@@ -339,6 +340,17 @@ public class IconCache {
         }
     }
 
+    private Bitmap getCustomizedIcon(){
+        Resources res = mContext.getResources();
+        Bitmap bitmap = BitmapFactory.decodeResource(res, R.drawable.customize_browser_icon);
+        return bitmap;
+    }
+
+    private String getCustomizedTitle() {
+        return mContext.getResources().getString(
+                R.string.config_regional_customize_default_browser_title);
+    }
+
     public Bitmap getIcon(ComponentName component, LauncherActivityInfoCompat info,
             HashMap<Object, CharSequence> labelCache) {
         return getIcon(component, info, labelCache, false);
@@ -410,8 +422,20 @@ public class IconCache {
                 }
 
                 entry.contentDescription = mUserManager.getBadgedLabelForUser(entry.title, user);
-                entry.icon = Utilities.createIconBitmap(
-                        info.getBadgedIcon(mIconDpi), mContext, unreadNum, newDownload);
+                boolean iscustomizechrome =
+                        info.getComponentName().toString().trim().contains(CHROME_PACKAGE_NAME)
+                        && mContext.getResources().getBoolean(
+                                R.bool.config_regional_customize_default_browser_icon);
+                if (iscustomizechrome) {
+                    String customizedTitle = getCustomizedTitle();
+                    if (!TextUtils.isEmpty(customizedTitle)) {
+                        entry.title = customizedTitle;
+                    }
+                    entry.icon = getCustomizedIcon();
+                } else {
+                    entry.icon = Utilities.createIconBitmap(
+                            info.getBadgedIcon(mIconDpi), mContext, unreadNum, newDownload);
+                }
             } else {
                 entry.title = "";
                 Bitmap preloaded = getPreloadedIcon(componentName, user);
