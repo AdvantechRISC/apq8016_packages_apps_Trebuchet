@@ -39,6 +39,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     style="@style/SettingsPaneButton"
+                    android:drawablePadding="6dip"
                     android:drawableTop="@drawable/wallpaper_button"
                     android:text="@string/wallpaper_button_text" />
 
