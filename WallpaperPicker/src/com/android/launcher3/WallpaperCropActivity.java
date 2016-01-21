@@ -336,7 +336,7 @@ public class WallpaperCropActivity extends Activity {
         Point outSize = null;
 
         // TODO: Improvise solution to bypass cropping functionality.
-        if (!res.
+        if (!getResources().
                 getBoolean(R.bool.config_launcher_disable_wallpaper_scaling)) {
             outSize = getDefaultWallpaperSize(getResources(),
                     getWindowManager());
