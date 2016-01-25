@@ -777,7 +777,7 @@ public class LauncherModel extends BroadcastReceiver
     static private void addScreenIdToDatabase(
         Context context, ItemInfo item, long screenId) {
         addItemToDatabase(context, item, item.container,
-            screenId, item.cellX, item.cellY, false);
+            screenId, item.cellX, item.cellY, true);
         sBgWorkspaceScreens.add(screenId);
     }
 
