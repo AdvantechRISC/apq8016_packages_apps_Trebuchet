@@ -125,6 +125,24 @@ class LauncherSettings {
     }
 
     /**
+     * Rename
+     */
+    static final class Rename {
+        // the rename table
+        static final String TABLE_RENAME = "rename";
+        static final String RENAME_ID = "_id";
+        // the shortcut have rename content columns
+        static final String RENAME_TITLE = "title";
+        // the shortcut_id as the same as the favorites table _id
+        static final String RENAME_SHORTCUT_ID = "shortcut_id";
+        /**
+         * The content:// style URL for this table
+         */
+        static final Uri CONTENT_URI_RENAME = Uri.parse("content://" +
+                LauncherProvider.AUTHORITY + "/" + TABLE_RENAME);
+    }
+
+    /**
      * Favorites.
      */
     static final class Favorites implements BaseLauncherColumns {
