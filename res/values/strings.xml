@@ -318,4 +318,5 @@ s -->
         You can remove it, or search for the app and install it manually.
     </string>
     <string name="config_regional_customize_default_browser_title"></string>
+    <string name="can_not_input_rename">Please do not input invalid name</string>
 </resources>

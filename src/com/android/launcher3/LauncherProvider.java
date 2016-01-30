@@ -181,6 +181,10 @@ public class LauncherProvider extends ContentProvider {
         }
 
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+        if (LauncherSettings.Rename.TABLE_RENAME.equals(args.table)) {
+            long id = db.insert(args.table, null, initialValues);
+            return ContentUris.withAppendedId(uri, id);
+        }
         addModifiedTime(initialValues);
         final long rowId = dbInsertAndCheck(mOpenHelper, db, args.table, null, initialValues);
         if (rowId <= 0) return null;
@@ -244,7 +248,9 @@ public class LauncherProvider extends ContentProvider {
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         SqlArguments args = new SqlArguments(uri, selection, selectionArgs);
 
-        addModifiedTime(values);
+        if (!LauncherSettings.Rename.TABLE_RENAME.equals(args.table)) {
+            addModifiedTime(values);
+        }
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
         int count = db.update(args.table, values, args.where, args.args);
         if (count > 0) sendNotify(uri);
@@ -538,6 +544,18 @@ public class LauncherProvider extends ContentProvider {
                 mMaxItemId = initializeMaxItemId(db);
                 setFlagEmptyDbCreated();
             }
+            createRenameTable(db);
+        }
+
+        private void createRenameTable(SQLiteDatabase db) {
+            db.execSQL("CREATE TABLE rename (" + "_id INTEGER PRIMARY KEY,"
+                    + "shortcut_id INTEGER," + "title TEXT" + ");");
+            db.execSQL("CREATE TRIGGER favorites_delete AFTER DELETE"
+                    + " ON favorites"
+                    + " BEGIN " + "DELETE FROM rename WHERE "
+                    + LauncherSettings.Rename.RENAME_SHORTCUT_ID + "=OLD."
+                    + LauncherSettings.Favorites._ID + ";"
+                    + " END");
         }
 
         private void addWorkspacesTable(SQLiteDatabase db) {

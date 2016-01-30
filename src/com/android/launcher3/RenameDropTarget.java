@@ -33,6 +33,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.android.launcher3.compat.UserHandleCompat;
 
@@ -106,8 +107,14 @@ public class RenameDropTarget extends ButtonDropTarget {
                     new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            mLauncher.updateTitleDb(curShortcutInfo,
-                                    ed.getText().toString());
+                            String rename = ed.getText().toString();
+                            if (rename == null || rename.trim().length() == 0) {
+                                Toast.makeText(mCtx,
+                                        R.string.can_not_input_rename,
+                                        Toast.LENGTH_LONG).show();
+                            } else {
+                                mLauncher.updateTitleDb(curShortcutInfo,rename);
+                            }
                             mLauncher.getModel().forceReload();
                         }
                     }

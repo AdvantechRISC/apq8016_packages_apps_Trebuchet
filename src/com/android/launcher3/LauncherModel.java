@@ -181,6 +181,7 @@ public class LauncherModel extends BroadcastReceiver
     static final HashMap<UserHandleCompat, HashSet<String>> sPendingPackages =
             new HashMap<UserHandleCompat, HashSet<String>>();
 
+    private static HashMap<Long, String> sShortcutRenameCache = new HashMap<Long, String>();
     // </ only access in worker thread >
 
     public static final String ACTION_UNREAD_CHANGED =
@@ -367,6 +368,22 @@ public class LauncherModel extends BroadcastReceiver
         mPreviousConfigMcc = config.mcc;
         mLauncherApps = LauncherAppsCompat.getInstance(context);
         mUserManager = UserManagerCompat.getInstance(context);
+        initRenameHashMap(context);
+    }
+
+    public void initRenameHashMap(Context context){
+        ContentResolver cr = context.getContentResolver();
+        Cursor c = cr.query(LauncherSettings.Rename.CONTENT_URI_RENAME, null,
+                null, null, null);
+        if (c != null && c.getCount() > 0) {
+            int shortcutIndex = c.getColumnIndex(LauncherSettings.Rename.RENAME_SHORTCUT_ID);
+            int titleIndex = c.getColumnIndex(LauncherSettings.Rename.RENAME_TITLE);
+            c.moveToFirst();
+            sShortcutRenameCache.clear();
+            do {
+                sShortcutRenameCache.put(c.getLong(shortcutIndex), c.getString(titleIndex));
+            } while (c.moveToNext());
+        }
     }
 
     /** Runs the specified runnable immediately if called from the main thread, otherwise it is
@@ -1285,6 +1302,7 @@ public class LauncherModel extends BroadcastReceiver
                 for (ItemInfo item : items) {
                     final Uri uri = LauncherSettings.Favorites.getContentUri(item.id, false);
                     cr.delete(uri, null, null);
+                    removeShortCutHashMap(item.id);
 
                     // Lock on mBgLock *after* the db operation
                     synchronized (sBgLock) {
@@ -3391,7 +3409,38 @@ public class LauncherModel extends BroadcastReceiver
 
     public void updateShortcutTitle(Context context, ShortcutInfo info, String title) {
         info.title = title;
-        updateItemInDatabase(context, info);
+        RenameItemInDatabase(context, info);
+    }
+
+    private void RenameItemInDatabase(Context context, ShortcutInfo info) {
+        ContentResolver cr = context.getContentResolver();
+        Cursor c = cr.query(LauncherSettings.Rename.CONTENT_URI_RENAME, null,
+                LauncherSettings.Rename.RENAME_SHORTCUT_ID + "=?",
+                new String[] { "" + info.id }, null);
+        ContentValues values = new ContentValues();
+        values.put(LauncherSettings.Rename.RENAME_TITLE, info.title.toString());
+        values.put(LauncherSettings.Rename.RENAME_SHORTCUT_ID, info.id);
+        if (c == null || c.getCount() == 0) {
+            cr.insert(LauncherSettings.Rename.CONTENT_URI_RENAME, values);
+        } else {
+            cr.update(LauncherSettings.Rename.CONTENT_URI_RENAME, values,
+                    LauncherSettings.Rename.RENAME_SHORTCUT_ID + "=?",
+                    new String[] { "" + info.id });
+        }
+        if (c != null) {
+            c.close();
+        }
+        updateShortCutHashMap(info.id, info.title.toString());
+    }
+
+    private void updateShortCutHashMap(long id, String title){
+        sShortcutRenameCache.put(id, title);
+    }
+
+    private static void removeShortCutHashMap(long id){
+        if (sShortcutRenameCache.containsKey(id)) {
+            sShortcutRenameCache.remove(id);
+        }
     }
 
     private class PackageUpdatedTask implements Runnable {
@@ -3741,10 +3790,8 @@ public class LauncherModel extends BroadcastReceiver
         }
         info.setIcon(icon);
 
-        // from the db
-        if (c != null) {
-            info.title =  c.getString(titleIndex);
-        }
+        // from the rename title if the rename title has exists.
+        getRenameTitleFromCache(info, c);
 
         // From the cache.
         if (info.title == null && labelCache != null) {
@@ -3758,6 +3805,14 @@ public class LauncherModel extends BroadcastReceiver
                 labelCache.put(componentName, info.title);
             }
         }
+
+        // from the db
+        if (info.title == null) {
+            if (c != null) {
+                info.title =  c.getString(titleIndex);
+            }
+        }
+
         // fall back to the class name of the activity
         if (info.title == null) {
             info.title = componentName.getClassName();
@@ -3767,6 +3822,20 @@ public class LauncherModel extends BroadcastReceiver
         info.contentDescription = mUserManager.getBadgedLabelForUser(
                 info.title.toString(), info.user);
         return info;
+    }
+
+    private void getRenameTitleFromCache(ShortcutInfo info,
+            Cursor c) {
+        long shortcutId = 0;
+        if (info.id == ShortcutInfo.NO_ID) {
+            shortcutId = c.getLong(c
+                    .getColumnIndex(LauncherSettings.Favorites._ID));
+        } else {
+            shortcutId = info.id;
+        }
+        if (sShortcutRenameCache.containsKey(shortcutId)) {
+            info.title = sShortcutRenameCache.get(shortcutId);
+        }
     }
 
     static ArrayList<ItemInfo> filterItemInfos(Collection<ItemInfo> infos,
