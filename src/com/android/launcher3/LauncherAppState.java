@@ -79,6 +79,12 @@ public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
         sContext = context.getApplicationContext();
     }
 
+    public void refresh() {
+        if (mModel != null) {
+            mModel.forceReload();
+        }
+    }
+
     private LauncherAppState() {
         if (sContext == null) {
             throw new IllegalStateException("LauncherAppState inited before app context set");
